@@ -18,6 +18,8 @@ jobs:
       url: ${{ steps.d.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with: { enablement: true }
       - run: mkdir _site && cp -r index.html style.css app.js sw.js manifest.webmanifest icons data _site/
       - uses: actions/upload-pages-artifact@v3
         with: { path: _site }
