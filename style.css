@@ -276,3 +276,10 @@ a.opt { text-decoration: none; color: var(--ink); }
 .tip p { margin: 0; font-size: 14px; }
 .tip .btn { min-height: 34px; }
 @keyframes tipin { from { opacity: 0; transform: translateY(10px); } }
+
+/* 精簡：筆記圖示只在我的台詞、被點選的台詞、有筆記的台詞出現 */
+.line:not(.mine):not(.sel):not(.cursor) .nb:not(.on) { display: none; }
+.line.sel { background: color-mix(in srgb, var(--line) 50%, transparent); }
+summary.roles-h { cursor: pointer; list-style: none; }
+summary.roles-h::-webkit-details-marker { display: none; }
+#optsheet .set b { font-size: 16px; }
