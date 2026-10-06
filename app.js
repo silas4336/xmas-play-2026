@@ -210,7 +210,7 @@ function viewRead() {
   ${reh ? `<div class="dock"><div class="info" id="info"></div><div class="pad">
       <button data-nav="mprev" aria-label="我的上一句">⏮</button><button data-nav="prev" aria-label="上一句">◀</button>
       <button class="main" data-nav="next" aria-label="下一句">▶</button><button data-nav="mnext" aria-label="我的下一句">⏭</button></div></div>`
-    : (f.length ? '<button class="fab" data-nav="jump">▼ 我的下一句</button>' : '')}`;
+    : (f.length ? '<div class="fabs"><button data-nav="mprev" aria-label="我的上一句">▲ 上一句</button><button data-nav="mnext" aria-label="我的下一句">▼ 我的下一句</button></div>' : '')}`;
 }
 
 function afterRead() {
@@ -262,17 +262,28 @@ function setCursor(i, scroll = true, quiet = false) {
   if (info) info.textContent = els[cur].dataset.mine ? '輪到你了！' : !S.roles.length ? '請先選擇角色' : nxt < 0 ? '本幕你的台詞已結束' : `再 ${nxt - cur} 句輪到你`;
 }
 function jumpMine(dir) {
-  const els = $$('.line[data-mine]');
-  if (!els.length) return toast('這一幕沒有你的台詞');
+  const f = focusRoles();
+  if (!f.length) return openRolePicker(false);
+  const n = route.act;
+  const mineIn = k => linesByAct[k].filter(l => isMine(l, f));
+  const goAct = k => { // 這一幕沒有了：跳到上／下一幕裡我的台詞
+    for (let j = k; j >= 1 && j <= 3; j += dir) {
+      const m = mineIn(j);
+      if (m.length) { location.hash = `#/read/${j}?line=${m[dir > 0 ? 0 : m.length - 1].id}${route.q.role ? '&role=' + route.q.role : ''}`; return toast(`到第${'一二三'[j - 1]}幕`); }
+    }
+    toast(dir > 0 ? '後面沒有你的台詞了' : '前面沒有你的台詞了');
+  };
   if (S.mode === 'rehearse') {
     const all = $$('.line');
     const mi = all.map((e, k) => e.dataset.mine ? k : -1).filter(k => k >= 0);
     const t = dir > 0 ? mi.find(k => k > cur) : [...mi].reverse().find(k => k < cur);
-    if (t === undefined) return toast(dir > 0 ? '後面沒有你的台詞了' : '前面沒有你的台詞了');
-    return setCursor(t);
+    return t === undefined ? goAct(n + dir) : setCursor(t);
   }
-  const top = e => e.getBoundingClientRect().top;
-  const t = els.find(e => top(e) > 140) || els[0];
+  // 閱讀／背誦：以畫面中線為基準，找中線下方（上方）最近的一句，所以連按會一句句往下走
+  const mid = innerHeight / 2, els = $$('.line[data-mine]');
+  const t = dir > 0 ? els.find(e => e.getBoundingClientRect().top > mid + 24)
+    : [...els].reverse().find(e => e.getBoundingClientRect().bottom < mid - 24);
+  if (!t) return goAct(n + dir);
   t.scrollIntoView({ block: 'center', behavior: 'smooth' });
   t.classList.remove('hl'); void t.offsetWidth; t.classList.add('hl');
 }
@@ -412,7 +423,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.nav) {
-    ({ next: () => setCursor(cur + 1), prev: () => setCursor(cur - 1), mnext: () => jumpMine(1), mprev: () => jumpMine(-1), jump: () => jumpMine(1) })[d.nav]();
+    ({ next: () => setCursor(cur + 1), prev: () => setCursor(cur - 1), mnext: () => jumpMine(1), mprev: () => jumpMine(-1) })[d.nav]();
     return;
   }
   if (d.role) { S.roles = S.roles.includes(d.role) ? S.roles.filter(r => r !== d.role) : [...S.roles, d.role]; save(); const y = scrollY; render(); scrollTo(0, y); return; }
@@ -453,6 +464,8 @@ document.addEventListener('keydown', e => {
 });
 
 if ('serviceWorker' in navigator) {
+  const had = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) { toast('已更新到新版本'); setTimeout(() => location.reload(), 800); } });
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
 }
 boot();
