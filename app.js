@@ -6,7 +6,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const KEY = 'xmas-play-v1';
 const DEF = {
   roles: [], font: 19, theme: 'auto', mastered: {}, mode: 'read', onlyMine: false, hint: 'first',
-  unmasteredOnly: false, flaggedOnly: false, myScenesOnly: false, notes: {}, flags: {}, roleNotes: {}, cover: false, tts: { rate: 1, mine: 'auto', name: true, voice: 'auto' }, keepAwake: true, haptic: true, prompts: {}, cards: { scope: 0, deck: 'unmastered', shuffle: true }, showPast: false, last: { act: 1, line: null },
+  unmasteredOnly: false, flaggedOnly: false, myScenesOnly: false, notes: {}, flags: {}, roleNotes: {}, cover: false, tts: { rate: 1, mine: 'auto', name: true, voice: 'auto' }, keepAwake: true, haptic: true, onboarded: false, tipsSeen: {}, prompts: {}, cards: { scope: 0, deck: 'unmastered', shuffle: true }, showPast: false, last: { act: 1, line: null },
 };
 let S = { ...DEF };
 try { S = { ...DEF, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { /* 無痕模式等情況 */ }
@@ -58,7 +58,8 @@ async function boot() {
   window.addEventListener('hashchange', render);
   document.addEventListener('visibilitychange', () => { if (document.hidden) ttsStop(); if (!document.hidden) wake(route.name === 'read' && S.mode === 'rehearse'); });
   render();
-  if (!S.roles.length && !sessionStorage.getItem('asked')) { sessionStorage.setItem('asked', '1'); setTimeout(() => openRolePicker(true), 300); }
+  if (!S.onboarded) setTimeout(openTour, 250);
+  else if (!S.roles.length && !sessionStorage.getItem('asked')) { sessionStorage.setItem('asked', '1'); setTimeout(() => openRolePicker(true), 300); }
 }
 
 function applyTheme() {
@@ -87,6 +88,7 @@ function render() {
   $('#nav').innerHTML = NAV.map(([k, t, ic, href]) => `<a href="${href}" class="${k === tab ? 'on' : ''}"><svg viewBox="0 0 24 24">${ICONS[ic]}</svg>${t}</a>`).join('');
   if (route.name === 'read') afterRead();
   else window.scrollTo(0, 0);
+  maybeTip();
 }
 
 /* ---------- 共用 ---------- */
@@ -389,6 +391,7 @@ function viewMore() {
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
   return `<h1 class="page-title">更多</h1>
   <div class="card list"><a href="#/help">使用說明 <span>›</span></a><a href="#/print">列印我的台詞本（存成 PDF） <span>›</span></a><a href="#/crew">劇組分工 <span>›</span></a><a href="#/settings">設定 <span>›</span></a>
+    <button class="row" data-do="tour">重看新手導覽 <span>›</span></button>
     <button class="row" data-do="share">分享網站給其他演員 <span>↗</span></button></div>
   ${standalone ? '' : `<div class="card"><h3>安裝成 App</h3>
     ${ios ? '<p style="margin:0">用 Safari 開啟，點下方「分享」→「加入主畫面」，之後就能像 App 一樣離線使用。</p>'
@@ -704,6 +707,67 @@ function shareApp() {
   else prompt('複製這個網址：', url);
 }
 
+/* ---------- 新手導覽（第一次打開）與各頁面的第一次提示 ---------- */
+const TOUR = [
+  { icon: '🎭', title: '歡迎來到聖誕劇劇本', text: '這是給演員用的劇本。先選你的角色，劇本裡你的台詞就會自動標出來，其他人的台詞只當提示。',
+    demo: '<div class="chips"><span class="chip">可凡</span><span class="chip gold">若心 ✓</span><span class="chip">艾薇</span></div><p class="muted" style="margin:10px 0 0;font-size:13px">可以複選，一人分飾兩角也沒問題</p>' },
+  { icon: '📖', title: '閱讀：一眼找到自己的台詞', text: '黃底粗體就是你的台詞。📑 可以看場景目錄、🔍 搜尋，右下角「▼ 我的下一句」一句句跳；打開「只看我的台詞」只留你的台詞和前一句。',
+    demo: '<div class="line"><div class="who" style="--h:120">艾薇</div><div class="say">若心啊，你真的沒變……</div></div><div class="line mine"><div class="who" style="--h:20">若心</div><div class="say">（又好笑，又緊張）小聲一點啊！</div></div>' },
+  { icon: '🧠', title: '背誦與閃卡：練到不看也會', text: '背誦模式會蓋住你的台詞，點一下才顯示，念對了打勾。閃卡只給前一句，讓你先回想再翻牌；忘了的會被記下來，之後專門複習。',
+    demo: '<div class="line mine"><div class="who" style="--h:20">若心</div><div class="say covered"><span class="hintt">還＿＿＿＿，是＿，我＿＿＿</span></div><button class="chk on" style="pointer-events:none">✓</button></div>' },
+  { icon: '🎬', title: '彩排：像在現場一樣', text: '目前的句子會放大框起來，按 ▶ 或左右滑動換句。「丟本」蓋住你的台詞；「🔊 朗讀對詞」讓手機念別人的台詞，輪到你就等你念。',
+    demo: '<div class="line cursor mine" style="outline:3px solid var(--accent);outline-offset:-2px"><div class="who" style="--h:20">若心</div><div class="say">輪到你了！</div></div><div class="pad demo-pad"><span>⏮</span><span>◀</span><span class="m">▶</span><span>⏭</span></div>' },
+  { icon: '📝', title: '筆記、備份與安裝', text: '每句台詞旁的 ✎ 可以寫筆記、標 ⚠ 容易忘。所有資料只存在你的手機，換手機前記得到「設定」匯出備份。把網站「加到主畫面」就能離線使用。',
+    demo: '<div class="note-box">📝 這裡要停頓一拍，轉身看艾薇</div><p class="muted" style="margin:10px 0 0;font-size:13px">iPhone：Safari 分享 → 加入主畫面<br>Android：Chrome 選單 → 安裝應用程式</p>' },
+];
+function openTour() {
+  const o = $('#overlay');
+  o.innerHTML = `<div class="tour" role="dialog" aria-label="新手導覽"><button class="skip" data-tour="skip">略過</button>
+    <div class="track" id="tourtrack">${TOUR.map(s => `<section><div class="ticon">${s.icon}</div><h2>${s.title}</h2><p>${s.text}</p><div class="demo">${s.demo}</div></section>`).join('')}</div>
+    <div class="dots" id="tourdots">${TOUR.map(() => '<i></i>').join('')}</div>
+    <div class="tour-btns"><button class="btn" data-tour="prev">上一步</button><button class="btn primary" data-tour="next">下一步</button></div></div>`;
+  o.hidden = false;
+  const tr = $('#tourtrack'), upd = () => {
+    const i = Math.round(tr.scrollLeft / tr.clientWidth);
+    $$('#tourdots i').forEach((d, k) => d.classList.toggle('on', k === i));
+    $('[data-tour=prev]').style.visibility = i ? 'visible' : 'hidden';
+    $('[data-tour=next]').textContent = i === TOUR.length - 1 ? '開始使用' : '下一步';
+    tr.dataset.i = i;
+  };
+  tr.addEventListener('scroll', upd, { passive: true }); upd();
+}
+function tourAct(a) {
+  const tr = $('#tourtrack'); if (!tr) return;
+  const i = +tr.dataset.i || 0;
+  if (a === 'skip' || (a === 'next' && i >= TOUR.length - 1)) {
+    S.onboarded = 1; save(); closeSheet();
+    if (!S.roles.length) openRolePicker(true);
+    return;
+  }
+  tr.scrollTo({ left: (i + (a === 'next' ? 1 : -1)) * tr.clientWidth, behavior: 'smooth' });
+}
+const TIPS = {
+  read: ['閱讀', '📑 看場景目錄、🔍 搜尋台詞；右下角「▼ 我的下一句」一句句跳。上方可以切換「背誦」和「彩排」。'],
+  memo: ['背誦', '你的台詞被蓋住了，點一下顯示，念對了按 ✓。想只練還沒背熟的，打開上方的選項。'],
+  rehearse: ['彩排', '按 ▶ 或左右滑動換句；「丟本」會蓋住你的台詞，點開提詞會被記下來；🔊 讓手機念別人的台詞。'],
+  cards: ['閃卡', '先自己回想台詞，再點卡片看答案。按「忘了」會記下來，之後可以專門複習。'],
+  roles: ['角色', '可以複選自己的角色，也能寫角色小傳。「看他的台詞」可以只看某個角色。'],
+  schedule: ['行程', '灰色的是已經過的排練。可以匯出到手機行事曆，排練前一小時會提醒你。'],
+};
+function maybeTip() {
+  const old = $('.tip'); if (old) old.remove();
+  const key = route.name === 'read' ? S.mode : route.name, tip = TIPS[key];
+  if (!tip || S.tipsSeen[key] || !S.onboarded) return;
+  const at = location.hash;
+  setTimeout(() => {
+    if (location.hash !== at || !$('#overlay').hidden || $('.tip') || S.tipsSeen[key]) return;
+    S.tipsSeen[key] = 1; save();
+    const d = document.createElement('div'); d.className = 'tip' + (key === 'rehearse' ? ' high' : '');
+    d.innerHTML = `<b>${tip[0]}小提示</b><p>${tip[1]}</p><button class="btn small primary" data-tip="x">知道了</button>`;
+    document.body.appendChild(d);
+  }, 600);
+}
+
 /* ---------- 螢幕常亮 ---------- */
 let wl = null;
 async function wake(on) {
@@ -715,12 +779,14 @@ async function wake(on) {
 
 /* ---------- 事件 ---------- */
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-do],[data-mode],[data-opt],[data-chk],[data-nav],[data-role],[data-go],[data-note],[data-scene],[data-tts],[data-prep],[data-cards],[data-fc],[data-cset],[data-sg],.covered,.rehearse .line,#overlay');
+  const t = e.target.closest('[data-do],[data-mode],[data-opt],[data-chk],[data-nav],[data-role],[data-go],[data-note],[data-scene],[data-tts],[data-prep],[data-tour],[data-tip],[data-cards],[data-fc],[data-cset],[data-sg],.covered,.rehearse .line,#overlay');
   if (!t) return;
   if (t.id === 'overlay') { if (e.target === t) closeSheet(); return; }
   const d = t.dataset;
   if (d.go) { S.mode = d.go; save(); const a = S.last.act || 1; location.hash = `#/read/${a}?resume=1`; if (route.name === 'read') render(); return; }
   if (d.mode) { S.mode = d.mode; revealed.clear(); save(); keepRender(); return; }
+  if (d.tour) return tourAct(d.tour);
+  if (d.tip) { t.closest('.tip').remove(); return; }
   if (d.prep) { S.mode = 'memo'; S.last = { act: +d.prep, line: null }; save(); location.hash = `#/read/${d.prep}`; if (route.name === 'read') render(); return; }
   if (d.cards) { S.cards.deck = d.cards; save(); deck = null; location.hash = '#/cards'; if (route.name === 'cards') render(); return; }
   if (d.fc) return fcAct(d.fc);
@@ -771,6 +837,7 @@ function doAction(a, e, t) {
   else if (a === 'fontsheet') openFont();
   else if (a === 'printnow') window.print();
   else if (a === 'share') shareApp();
+  else if (a === 'tour') { S.tipsSeen = {}; save(); openTour(); }
   else if (a === 'revealAll') { $$('.covered').forEach(c => { c.classList.add('revealed'); revealed.add(c.closest('.line').dataset.id); }); }
   else if (a === 'ics') downloadIcs();
   else if (a === 'past') { S.showPast = !S.showPast; save(); render(); }
