@@ -172,6 +172,29 @@ for raw in lines[start:]:
     else:
         push({'t': 'stage', 'text': l})
 
+# 依 tools/scenes.json 把每一幕重新分場景
+SCENES = json.loads((ROOT / 'tools' / 'scenes.json').read_text(encoding='utf-8'))
+def item_key(it):
+    return f"{it['label']}：{it['text']}" if it['t'] == 'line' else f"〔{it['text']}"
+for a in acts:
+    plan = SCENES.get(str(a['n']))
+    if not plan:
+        continue
+    items = [it for sc in a['scenes'] for it in sc['items']]
+    cuts = []
+    for sp in plan:
+        idx = next((i for i, it in enumerate(items) if item_key(it).replace('\n', '').startswith(sp['anchor'])), None)
+        if idx is None:
+            print(f"警告：第{a['n']}幕找不到場景「{sp['title']}」的 anchor：{sp['anchor']}"); continue
+        cuts.append((idx, sp))
+    cuts.sort(key=lambda c: c[0])
+    if not cuts or cuts[0][0] != 0:
+        cuts.insert(0, (0, {'title': '', 'desc': ''}))
+    a['scenes'] = []
+    for k, (idx, sp) in enumerate(cuts):
+        end = cuts[k + 1][0] if k + 1 < len(cuts) else len(items)
+        a['scenes'].append({'id': f"a{a['n']}s{k+1}", 'title': sp['title'], 'desc': sp['desc'], 'items': items[idx:end]})
+
 # 命名場景、統計
 roles_out = []
 cnt = {r[0]: {1: 0, 2: 0, 3: 0} for r in ROLES}
