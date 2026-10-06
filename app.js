@@ -6,7 +6,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const KEY = 'xmas-play-v1';
 const DEF = {
   roles: [], font: 19, theme: 'auto', mastered: {}, mode: 'read', onlyMine: false, hint: 'first',
-  unmasteredOnly: false, cover: false, keepAwake: true, showPast: false, last: { act: 1, line: null },
+  unmasteredOnly: false, flaggedOnly: false, myScenesOnly: false, notes: {}, flags: {}, roleNotes: {}, cover: false, keepAwake: true, showPast: false, last: { act: 1, line: null },
 };
 let S = { ...DEF };
 try { S = { ...DEF, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { /* 無痕模式等情況 */ }
@@ -146,14 +146,16 @@ function hintText(t) {
 }
 function fmtText(t) { return esc(t).replace(/[（(][^）)]*[）)]|［[^］]*］|\[[^\]]*\]/g, m => `<i>${m}</i>`); }
 
+const inPractice = id => !((S.unmasteredOnly && S.mastered[id]) || (S.flaggedOnly && !S.flags[id]));
+
 function lineHtml(it, o) {
   const hue = (roleById[it.who[0]] || { hue: 0 }).hue;
   const memo = S.mode === 'memo';
-  const covered = o.mine && (memo || (S.mode === 'rehearse' && S.cover)) && !(memo && S.unmasteredOnly && S.mastered[it.id]);
-  const cls = ['line', o.mine && 'mine', it.spot && 'spot', o.cue && 'cue', o.mine && memo && 'memo', o.mine && S.mastered[it.id] && 'mastered'].filter(Boolean).join(' ');
+  const covered = o.mine && (memo || (S.mode === 'rehearse' && S.cover)) && !(memo && !inPractice(it.id));
+  const cls = ['line', o.mine && 'mine', it.spot && 'spot', o.cue && 'cue', o.mine && memo && 'memo', o.mine && S.mastered[it.id] && 'mastered', S.flags[it.id] && 'flag'].filter(Boolean).join(' ');
   return `<div class="${cls}" data-id="${it.id}"${o.mine ? ' data-mine="1"' : ''}>
-    <div class="who" style="--h:${hue}">${esc(it.label)}</div>
-    <div class="say${covered ? ' covered' + (revealed.has(it.id) ? ' revealed' : '') : ''}">${it.dir ? `<span class="dir">（${esc(it.dir)}）</span>` : ''}<span class="real">${fmtText(it.text)}</span>${covered ? `<span class="hintt">${hintText(it.text)}</span>` : ''}</div>
+    <div class="who" style="--h:${hue}">${esc(it.label)}<button class="nb${S.notes[it.id] || S.flags[it.id] ? ' on' : ''}" data-note="${it.id}" aria-label="筆記">${S.flags[it.id] ? '⚠' : S.notes[it.id] ? '📝' : '✎'}</button></div>
+    <div class="say${covered ? ' covered' + (revealed.has(it.id) ? ' revealed' : '') : ''}">${it.dir ? `<span class="dir">（${esc(it.dir)}）</span>` : ''}<span class="real">${fmtText(it.text)}</span>${covered ? `<span class="hintt">${hintText(it.text)}</span>` : ''}${S.notes[it.id] ? `<div class="note-box">📝 ${esc(S.notes[it.id])}</div>` : ''}</div>
     ${o.mine && memo ? `<button class="chk${S.mastered[it.id] ? ' on' : ''}" data-chk="${it.id}" aria-label="標記背熟了">✓</button>` : ''}
   </div>`;
 }
@@ -162,8 +164,10 @@ function viewRead() {
   const n = route.act, act = D.script.acts[n - 1], f = focusRoles();
   const memo = S.mode === 'memo', reh = S.mode === 'rehearse';
   const flat = [];
-  act.scenes.forEach(sc => { flat.push({ t: 'scene', sc }); sc.items.forEach(i => flat.push(i)); });
-  const target = it => isMine(it, f) && !(memo && S.unmasteredOnly && S.mastered[it.id]);
+  const hasMine = sc => sc.items.some(i => isMine(i, f));
+  const scenes = act.scenes.filter(sc => !(S.myScenesOnly && f.length) || hasMine(sc));
+  scenes.forEach(sc => { flat.push({ t: 'scene', sc }); sc.items.forEach(i => flat.push(i)); });
+  const target = it => isMine(it, f) && !(memo && !inPractice(it.id));
   const filtering = S.onlyMine && !reh && f.length;
   const keep = new Array(flat.length).fill(!filtering), cueIdx = new Set();
   if (filtering) {
@@ -181,7 +185,12 @@ function viewRead() {
     if (!keep[i]) { gap = true; return; }
     if (gap && it.t !== 'scene') html += '<div class="gap">⋯</div>';
     gap = false;
-    if (it.t === 'scene') html += `<div class="scene" id="${it.sc.id}"><b>場景 ${it.sc.no}</b>${it.sc.desc ? `<span>${esc(it.sc.desc)}</span>` : ''}</div>`;
+    if (it.t === 'scene') {
+      const sc = it.sc, nk = 'scene:' + sc.id, mc = f.length ? sc.items.filter(x => isMine(x, f)).length : 0;
+      html += `<div class="scene" id="${sc.id}"><div class="sc-top"><b>場景 ${sc.no}${sc.title ? '・' + esc(sc.title) : ''}</b><button class="nb${S.notes[nk] ? ' on' : ''}" data-note="${nk}" aria-label="場景筆記">${S.notes[nk] ? '📝' : '✎'}</button></div>
+        ${sc.desc ? `<div class="desc">${esc(sc.desc)}</div>` : ''}${f.length ? `<div class="chips" style="margin-top:6px">${mc ? `<span class="chip gold">你有 ${mc} 句</span>` : '<span class="chip">這場沒有你的戲</span>'}</div>` : ''}
+        ${S.notes[nk] ? `<div class="note-box">📝 ${esc(S.notes[nk])}</div>` : ''}</div>`;
+    }
     else if (it.t === 'stage') html += `<div class="stage">（${esc(it.text)}）</div>`;
     else html += lineHtml(it, { mine: isMine(it, f), cue: cueIdx.has(i) });
   });
@@ -190,9 +199,11 @@ function viewRead() {
   const modes = [['read', '閱讀'], ['memo', '背誦'], ['rehearse', '彩排']];
   const opts = [];
   if (!reh) opts.push(`<button class="opt${S.onlyMine ? ' on' : ''}" data-opt="onlyMine">只看我的台詞</button>`);
+  if (f.length) opts.push(`<button class="opt${S.myScenesOnly ? ' on' : ''}" data-opt="myScenesOnly">只看我有戲的場景</button>`);
   if (memo) {
     opts.push(`<button class="opt${S.hint === 'first' ? ' on' : ''}" data-opt="hint">提示：${S.hint === 'first' ? '每句首字' : '全部蓋住'}</button>`);
     opts.push(`<button class="opt${S.unmasteredOnly ? ' on' : ''}" data-opt="unmasteredOnly">只練還沒背熟的</button>`);
+    opts.push(`<button class="opt${S.flaggedOnly ? ' on' : ''}" data-opt="flaggedOnly">只練 ⚠ 標記的</button>`);
     opts.push('<button class="opt" data-do="revealAll">全部顯示</button>');
   }
   if (reh) opts.push(`<button class="opt${S.cover ? ' on' : ''}" data-opt="cover">丟本：蓋住我的台詞</button>`);
@@ -201,6 +212,7 @@ function viewRead() {
   <div class="rhead" id="rhead">
     <div class="rrow"><div class="tabs">${[1, 2, 3].map(i => `<a href="#/read/${i}${route.q.role ? '?role=' + route.q.role : ''}" class="${i === n ? 'on' : ''}">第${'一二三'[i - 1]}幕</a>`).join('')}</div>
       <button class="ibtn" data-do="font-" aria-label="縮小字體">A−</button><button class="ibtn" data-do="font+" aria-label="放大字體">A＋</button><button class="ibtn" data-do="search" aria-label="搜尋">🔍</button></div>
+    <div class="rrow opts scn">${scenes.map(sc => `<button class="opt${f.length && hasMine(sc) ? ' mine' : ''}" data-scene="${sc.id}">${sc.no}．${esc(sc.title || '場景')}</button>`).join('')}</div>
     <div class="rrow"><div class="seg">${modes.map(([k, t]) => `<button data-mode="${k}" class="${S.mode === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
     ${opts.length ? `<div class="rrow opts">${opts.join('')}</div>` : ''}
     ${pr && pr.total ? `<div class="rrow" style="font-size:12px;color:var(--muted)"><div class="bar" style="flex:1"><i style="width:${pr.done / pr.total * 100}%"></i></div><span id="progtxt">本幕已背熟 ${pr.done}/${pr.total}</span></div>` : ''}
@@ -295,6 +307,8 @@ function viewRoles() {
     const per = [1, 2, 3].filter(n => r.lines[n]).map(n => `第${'一二三'[n - 1]}幕 ${r.lines[n]} 句`).join('・');
     return `<div class="card role"><div class="top"><h3>${esc(r.name)}</h3>${sel ? '<span class="chip gold">我的角色</span>' : ''}</div>
       <p>${esc(r.desc)}</p><div class="chips" style="margin-bottom:10px"><span class="chip">${per || '無台詞'}</span></div>
+      <details class="rn"${S.roleNotes[r.id] ? ' open' : ''}><summary>角色小傳／筆記${S.roleNotes[r.id] ? ' 📝' : ''}</summary>
+        <textarea data-rn="${r.id}" rows="4" placeholder="寫下這個角色的背景、個性、和其他人的關係…（只存在你的手機）">${esc(S.roleNotes[r.id] || '')}</textarea></details>
       <div class="btn-row"><button class="btn small${sel ? '' : ' primary'}" data-role="${r.id}">${sel ? '取消我的角色' : '設為我的角色'}</button>
       ${per ? `<a class="btn small" style="text-decoration:none;display:inline-flex;align-items:center" href="#/read/${first}?role=${r.id}">看他的台詞</a>` : ''}</div></div>`;
   };
@@ -373,6 +387,9 @@ function viewSettings() {
     <div class="set"><span>字體大小</span><input type="range" min="14" max="32" value="${S.font}" data-set="font"></div>
     <div class="set"><span>外觀</span><select data-set="theme">${[['auto', '跟隨系統'], ['light', '淺色'], ['dark', '深色']].map(([v, t]) => `<option value="${v}"${S.theme === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
     <div class="set"><span>彩排時螢幕保持亮著</span>${sw('keepAwake', S.keepAwake)}</div></div>
+    <div class="card"><h3>備份</h3><p class="muted" style="margin:0 0 10px;font-size:14px">角色、背誦進度和筆記只存在這支手機。換手機前先匯出，再到新手機匯入。</p>
+      <div class="btn-row"><button class="btn small" data-do="export">匯出備份</button><button class="btn small" data-do="import">匯入備份</button></div>
+      <input type="file" id="importfile" accept="application/json,.json" hidden></div>
     <div class="card"><div class="set"><span>已背熟 ${Object.keys(S.mastered).length} 句</span><button class="btn small" data-do="resetMastered">重設背誦進度</button></div></div>
     <a href="#/more">‹ 返回</a>`;
 }
@@ -395,6 +412,53 @@ function openSearch() {
   };
 }
 
+/* ---------- 筆記、場景跳轉、備份 ---------- */
+function rerender() { const y = scrollY; render(); if (S.mode !== 'rehearse') scrollTo(0, y); }
+function openNote(key) {
+  const isScene = key.startsWith('scene:');
+  let title = '';
+  if (isScene) { const sc = D.script.acts.flatMap(a => a.scenes).find(x => x.id === key.slice(6)); title = `場景 ${sc.no}${sc.title ? '・' + sc.title : ''}`; }
+  else { const l = Object.values(linesByAct).flat().find(x => x.id === key); title = l ? `${l.label}：${l.text.replace(/\n/g, ' ').slice(0, 26)}…` : ''; }
+  const tags = ['停頓', '轉身', '放慢', '大聲', '放柔', '看著對方', '走位'];
+  showSheet(`<h2>筆記</h2><p class="muted" style="margin:0 0 10px;font-size:14px">${esc(title)}</p>
+    <textarea id="notetxt" rows="5" placeholder="例如：這裡要停頓一拍、轉身看艾薇…">${esc(S.notes[key] || '')}</textarea>
+    <div class="opts" style="margin:8px 0">${tags.map(t => `<button class="opt" data-do="tag" data-tag="${t}">${t}</button>`).join('')}</div>
+    ${isScene ? '' : `<label class="pick"><input type="checkbox" id="noteflag" ${S.flags[key] ? 'checked' : ''}>⚠ 標記為容易忘／要特別注意</label>`}
+    <div class="btn-row" style="margin-top:14px"><button class="btn primary" data-do="saveNote" data-key="${esc(key)}" style="flex:1">儲存</button>
+    ${S.notes[key] || S.flags[key] ? `<button class="btn" data-do="delNote" data-key="${esc(key)}">刪除</button>` : ''}<button class="btn" data-do="close">取消</button></div>`);
+}
+function gotoScene(id) {
+  const el = document.getElementById(id); if (!el) return;
+  if (S.mode === 'rehearse') {
+    let n = el.nextElementSibling; while (n && !n.classList.contains('line')) n = n.nextElementSibling;
+    if (n) return setCursor($$('.line').indexOf(n));
+  }
+  el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function exportData() {
+  const { roles, mastered, notes, flags, roleNotes, font, theme } = S;
+  const blob = new Blob([JSON.stringify({ app: 'xmas-play-2026', roles, mastered, notes, flags, roleNotes, font, theme }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'xmas-play-backup.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+document.addEventListener('change', e => {
+  if (e.target.id !== 'importfile' || !e.target.files[0]) return;
+  e.target.files[0].text().then(txt => {
+    const d = JSON.parse(txt);
+    if (d.app !== 'xmas-play-2026') throw 0;
+    ['roles', 'mastered', 'notes', 'flags', 'roleNotes', 'font', 'theme'].forEach(k => { if (d[k] !== undefined) S[k] = d[k]; });
+    save(); applyTheme(); document.documentElement.style.setProperty('--fs', S.font + 'px'); render(); toast('已匯入備份');
+  }).catch(() => toast('這不是有效的備份檔'));
+});
+/* 彩排：左右滑動換句 */
+let tx = null;
+document.addEventListener('touchstart', e => { tx = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!tx || route.name !== 'read' || S.mode !== 'rehearse' || !$('#overlay').hidden || e.target.closest('.opts,.dock,.rhead')) return;
+  const dx = e.changedTouches[0].clientX - tx[0], dy = e.changedTouches[0].clientY - tx[1]; tx = null;
+  if (Math.abs(dx) > 70 && Math.abs(dy) < 45) setCursor(cur + (dx < 0 ? 1 : -1));
+}, { passive: true });
+
 /* ---------- 螢幕常亮 ---------- */
 let wl = null;
 async function wake(on) {
@@ -406,7 +470,7 @@ async function wake(on) {
 
 /* ---------- 事件 ---------- */
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-do],[data-mode],[data-opt],[data-chk],[data-nav],[data-role],[data-go],.covered,.rehearse .line,#overlay');
+  const t = e.target.closest('[data-do],[data-mode],[data-opt],[data-chk],[data-nav],[data-role],[data-go],[data-note],[data-scene],.covered,.rehearse .line,#overlay');
   if (!t) return;
   if (t.id === 'overlay') { if (e.target === t) closeSheet(); return; }
   const d = t.dataset;
@@ -427,7 +491,9 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.role) { S.roles = S.roles.includes(d.role) ? S.roles.filter(r => r !== d.role) : [...S.roles, d.role]; save(); const y = scrollY; render(); scrollTo(0, y); return; }
-  if (d.do) return doAction(d.do, e);
+  if (d.note) return openNote(d.note);
+  if (d.scene) return gotoScene(d.scene);
+  if (d.do) return doAction(d.do, e, t);
   if (t.classList.contains('line')) { // 彩排：點哪句，游標到哪句；被蓋住的台詞順便翻開
     const els = $$('.line'); const i = els.indexOf(t); const say = $('.covered', t);
     if (say) { say.classList.toggle('revealed'); revealed.has(t.dataset.id) ? revealed.delete(t.dataset.id) : revealed.add(t.dataset.id); }
@@ -439,7 +505,7 @@ document.addEventListener('click', e => {
     t.classList.toggle('revealed'); revealed.has(id) ? revealed.delete(id) : revealed.add(id);
   }
 });
-function doAction(a, e) {
+function doAction(a, e, t) {
   if (a === 'pick') openRolePicker(false);
   else if (a === 'close') closeSheet();
   else if (a === 'saveRoles') { S.roles = $$('#overlay input:checked').map(i => i.value); save(); closeSheet(); render(); toast(S.roles.length ? '已儲存我的角色' : '尚未選擇角色'); }
@@ -449,9 +515,21 @@ function doAction(a, e) {
   else if (a === 'ics') downloadIcs();
   else if (a === 'past') { S.showPast = !S.showPast; save(); render(); }
   else if (a === 'install' && installEvt) { installEvt.prompt(); installEvt = null; }
+  else if (a === 'saveNote') {
+    const k = t.dataset.key, v = $('#notetxt').value.trim(), fl = $('#noteflag');
+    v ? S.notes[k] = v : delete S.notes[k];
+    if (fl) fl.checked ? S.flags[k] = 1 : delete S.flags[k];
+    save(); closeSheet(); rerender(); toast('已儲存筆記');
+  }
+  else if (a === 'delNote') { const k = t.dataset.key; delete S.notes[k]; delete S.flags[k]; save(); closeSheet(); rerender(); }
+  else if (a === 'tag') { const ta = $('#notetxt'); ta.value = (ta.value ? ta.value.replace(/\s*$/, '、') : '') + t.dataset.tag; ta.focus(); }
+  else if (a === 'export') exportData();
+  else if (a === 'import') $('#importfile').click();
   else if (a === 'resetMastered') { if (confirm('確定要清除所有「背熟了」的標記嗎？')) { S.mastered = {}; save(); render(); } }
 }
 document.addEventListener('input', e => {
+  const rn = e.target.closest('[data-rn]');
+  if (rn) { rn.value.trim() ? S.roleNotes[rn.dataset.rn] = rn.value : delete S.roleNotes[rn.dataset.rn]; save(); return; }
   const t = e.target.closest('[data-set]'); if (!t) return;
   if (t.dataset.set === 'font') { S.font = +t.value; document.documentElement.style.setProperty('--fs', S.font + 'px'); }
   if (t.dataset.set === 'theme') { S.theme = t.value; applyTheme(); }
