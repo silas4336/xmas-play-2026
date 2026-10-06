@@ -1,5 +1,5 @@
 /* 離線快取：先給快取、背景更新（stale-while-revalidate）。改了檔案後把 VERSION 加一即可。 */
-const VERSION = 'xmas-play-v3';
+const VERSION = 'xmas-play-v4';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'data/script.json', 'data/schedule.json', 'data/crew.json',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });

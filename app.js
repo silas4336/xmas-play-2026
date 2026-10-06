@@ -6,15 +6,17 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const KEY = 'xmas-play-v1';
 const DEF = {
   roles: [], font: 19, theme: 'auto', mastered: {}, mode: 'read', onlyMine: false, hint: 'first',
-  unmasteredOnly: false, flaggedOnly: false, myScenesOnly: false, notes: {}, flags: {}, roleNotes: {}, cover: false, keepAwake: true, showPast: false, last: { act: 1, line: null },
+  unmasteredOnly: false, flaggedOnly: false, myScenesOnly: false, notes: {}, flags: {}, roleNotes: {}, cover: false, tts: { rate: 1, mine: 'auto', name: true, voice: 'auto' }, keepAwake: true, showPast: false, last: { act: 1, line: null },
 };
 let S = { ...DEF };
 try { S = { ...DEF, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { /* 無痕模式等情況 */ }
+S.tts = { ...DEF.tts, ...(S.tts || {}) };
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } };
 
 let D = null;           // { script, schedule, crew }
 let roleById = {};
 let linesByAct = {};
+const allLines = new Map();
 let route = { name: 'home' };
 let cur = 0;            // 彩排游標（本幕第幾句）
 const revealed = new Set();
@@ -42,10 +44,11 @@ async function boot() {
   }
   D.script.roles.forEach((r, i) => { r.hue = (i * 47) % 360; roleById[r.id] = r; });
   D.script.acts.forEach(a => {
+    a.scenes.forEach(sc => sc.items.forEach(i => { if (i.t === 'line') allLines.set(i.id, i); }));
     linesByAct[a.n] = a.scenes.flatMap(s => s.items.filter(i => i.t === 'line'));
   });
   window.addEventListener('hashchange', render);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(route.name === 'read' && S.mode === 'rehearse'); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) ttsStop(); if (!document.hidden) wake(route.name === 'read' && S.mode === 'rehearse'); });
   render();
   if (!S.roles.length && !sessionStorage.getItem('asked')) { sessionStorage.setItem('asked', '1'); setTimeout(() => openRolePicker(true), 300); }
 }
@@ -66,6 +69,7 @@ function parseRoute() {
 function render() {
   route = parseRoute();
   wake(false);
+  ttsStop();
   window.onscroll = null;
   const view = { home: viewHome, read: viewRead, roles: viewRoles, schedule: viewSchedule, more: viewMore, crew: viewCrew, settings: viewSettings }[route.name] || viewHome;
   const app = $('#app');
@@ -219,7 +223,7 @@ function viewRead() {
   </div>
   ${roleBanner}${noRole}
   <div class="script${reh ? ' rehearse' : ''}" id="script">${html || '<p class="muted">這一幕沒有符合的台詞。</p>'}</div>
-  ${reh ? `<div class="dock"><div class="info" id="info"></div><div class="pad">
+  ${reh ? `<div class="dock"><div class="irow"><div class="info" id="info"></div>${hasTTS ? '<button class="tts" id="ttsbtn" data-tts="toggle">🔊 朗讀對詞</button><button class="tts" data-tts="set" aria-label="朗讀設定">⚙</button>' : ''}</div><div class="pad">
       <button data-nav="mprev" aria-label="我的上一句">⏮</button><button data-nav="prev" aria-label="上一句">◀</button>
       <button class="main" data-nav="next" aria-label="下一句">▶</button><button data-nav="mnext" aria-label="我的下一句">⏭</button></div></div>`
     : (f.length ? '<div class="fabs"><button data-nav="mprev" aria-label="我的上一句">▲ 上一句</button><button data-nav="mnext" aria-label="我的下一句">▼ 我的下一句</button></div>' : '')}`;
@@ -269,6 +273,7 @@ function setCursor(i, scroll = true, quiet = false) {
   if (scroll) els[cur].scrollIntoView({ block: 'center', behavior: quiet ? 'auto' : 'smooth' });
   else if (quiet) els[cur].scrollIntoView({ block: 'center' });
   S.last = { act: route.act, line: els[cur].dataset.id }; save();
+  if (playing && !ttsInternal) restartTts();
   const nxt = els.findIndex((e, k) => k > cur && e.dataset.mine);
   const info = $('#info');
   if (info) info.textContent = els[cur].dataset.mine ? '輪到你了！' : !S.roles.length ? '請先選擇角色' : nxt < 0 ? '本幕你的台詞已結束' : `再 ${nxt - cur} 句輪到你`;
@@ -386,7 +391,8 @@ function viewSettings() {
   return `<h1 class="page-title">設定</h1><div class="card">
     <div class="set"><span>字體大小</span><input type="range" min="14" max="32" value="${S.font}" data-set="font"></div>
     <div class="set"><span>外觀</span><select data-set="theme">${[['auto', '跟隨系統'], ['light', '淺色'], ['dark', '深色']].map(([v, t]) => `<option value="${v}"${S.theme === v ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
-    <div class="set"><span>彩排時螢幕保持亮著</span>${sw('keepAwake', S.keepAwake)}</div></div>
+    <div class="set"><span>彩排時螢幕保持亮著</span>${sw('keepAwake', S.keepAwake)}</div>
+    ${hasTTS ? '<div class="set"><span>語音朗讀（對詞）</span><button class="btn small" data-tts="set">設定</button></div>' : ''}</div>
     <div class="card"><h3>備份</h3><p class="muted" style="margin:0 0 10px;font-size:14px">角色、背誦進度和筆記只存在這支手機。換手機前先匯出，再到新手機匯入。</p>
       <div class="btn-row"><button class="btn small" data-do="export">匯出備份</button><button class="btn small" data-do="import">匯入備份</button></div>
       <input type="file" id="importfile" accept="application/json,.json" hidden></div>
@@ -411,6 +417,88 @@ function openSearch() {
     $('#hits').innerHTML = out.length ? out.map(([n, l]) => `<a class="hit" href="#/read/${n}?line=${l.id}" data-do="close"><small>第${'一二三'[n - 1]}幕・${esc(l.label)}</small>${esc(l.text.slice(0, 80)).replace(re, m => `<mark>${m}</mark>`)}</a>`).join('') : '<p class="muted">找不到。</p>';
   };
 }
+
+/* ---------- 語音朗讀（對詞）：念別人的台詞，輪到我時停下或等我念 ---------- */
+const hasTTS = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+let zhVoices = [], playing = false, ttsToken = 0, ttsInternal = false, ttsCancel = null;
+function loadVoices() { zhVoices = speechSynthesis.getVoices().filter(v => /^zh/i.test(v.lang)); }
+if (hasTTS) { loadVoices(); speechSynthesis.addEventListener && speechSynthesis.addEventListener('voiceschanged', loadVoices); }
+const speakable = t => t.normalize('NFKC').replace(/[（(［\[][^）)］\]]*[）)］\]]/g, '').replace(/[.．…。]{2,}/g, '，').replace(/\s+/g, ' ').trim();
+const chunks = t => { // 切成短句，避免手機瀏覽器念到一半被截斷
+  const parts = t.replace(/([。！？!?；;，,\n])/g, '$1\u0001').split('\u0001').map(x => x.trim()).filter(Boolean), out = []; let c = '';
+  for (const p of parts) { if (c && (c + p).length > 36) { out.push(c); c = p; } else c += p; }
+  if (c) out.push(c); return out;
+};
+function pickVoice(rid) {
+  if (S.tts.voice !== 'auto') return zhVoices.find(v => v.name === S.tts.voice);
+  if (!zhVoices.length) return null;
+  const tw = zhVoices.filter(v => /tw|hant|hk/i.test(v.lang)); const pool = tw.length ? tw : zhVoices;
+  return pool[Math.max(0, D.script.roles.findIndex(r => r.id === rid)) % pool.length];
+}
+function utter(text, rid, opt = {}) {
+  return new Promise(res => {
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'zh-TW'; u.rate = opt.rate || S.tts.rate;
+    u.pitch = 0.85 + (((roleById[rid] || { hue: 0 }).hue / 47) % 5) * 0.1;
+    const v = pickVoice(rid); if (v) { u.voice = v; u.lang = v.lang; }
+    let done = false; const tm = setTimeout(() => fin(), text.length * 600 / u.rate + 4000);
+    const fin = () => { if (!done) { done = true; clearTimeout(tm); res(); } };
+    u.onend = fin; u.onerror = fin; ttsCancel = fin;
+    try { speechSynthesis.speak(u); } catch (err) { fin(); }
+  });
+}
+const wait = ms => new Promise(res => { const t = setTimeout(res, ms); ttsCancel = () => { clearTimeout(t); res(); }; });
+function ttsUI() { const b = $('#ttsbtn'); if (b) { b.textContent = playing ? '⏸ 暫停朗讀' : '🔊 朗讀對詞'; b.classList.toggle('on', playing); } }
+function ttsStart() {
+  if (!hasTTS) return toast('這個瀏覽器不支援朗讀');
+  if (route.name !== 'read' || S.mode !== 'rehearse') return;
+  if (!S.roles.length) toast('還沒選角色，會全部念出來');
+  playing = true; ttsToken++; speechSynthesis.cancel(); ttsUI();
+  const el = $$('.line')[cur];
+  if (el && el.dataset.mine && S.tts.mine === 'pause') { ttsInternal = true; setCursor(cur + 1); ttsInternal = false; }
+  ttsLoop(ttsToken);
+}
+function ttsStop() {
+  const was = playing; playing = false; ttsToken++;
+  if (hasTTS) { try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
+  if (ttsCancel) ttsCancel();
+  if (was) ttsUI();
+}
+function restartTts() { const tok = ++ttsToken; speechSynthesis.cancel(); if (ttsCancel) ttsCancel(); setTimeout(() => { if (playing && tok === ttsToken) ttsLoop(tok); }, 80); }
+async function ttsLoop(token) {
+  while (playing && token === ttsToken) {
+    const els = $$('.line'), el = els[cur]; if (!el) break;
+    const it = allLines.get(el.dataset.id), mine = !!el.dataset.mine;
+    if (mine && S.tts.mine !== 'read') {
+      if (S.tts.mine === 'pause') { ttsStop(); return toast('輪到你了，念完按「朗讀對詞」繼續'); }
+      await wait((speakable(it.text).length * 320 + 1500) / S.tts.rate); // 等我自己念
+    } else {
+      if (S.tts.name) await utter(it.label.replace(/[，,]/g, '、'), it.who[0]);
+      for (const c of chunks(speakable(it.text))) { if (token !== ttsToken) return; await utter(c, it.who[0]); }
+    }
+    if (token !== ttsToken || !playing) return;
+    if (cur >= els.length - 1) { ttsStop(); return toast('這一幕結束了'); }
+    ttsInternal = true; setCursor(cur + 1); ttsInternal = false;
+  }
+}
+function ttsSettings() {
+  const seg = (k, opts) => `<div class="opts" style="margin:6px 0 14px">${opts.map(([v, t]) => `<button class="opt${String(S.tts[k]) === String(v) ? ' on' : ''}" data-ttsset="${k}" data-v="${v}">${t}</button>`).join('')}</div>`;
+  showSheet(`<h2>語音朗讀設定</h2>
+    <p class="muted" style="margin:0 0 12px;font-size:14px">在彩排模式按「朗讀對詞」，會用語音念出別人的台詞，輪到你就停下來等你念。聲音由手機提供。</p>
+    <b>輪到我的台詞時</b>${seg('mine', [['auto', '等我念（自動繼續）'], ['pause', '停下來，我按繼續'], ['read', '也念出來（聽範本）']])}
+    <b>朗讀速度</b>${seg('rate', [[0.8, '慢'], [1, '正常'], [1.2, '快'], [1.4, '很快']])}
+    <b>先念角色名</b>${seg('name', [[true, '要'], [false, '不要']])}
+    <b>聲音</b><div style="margin:6px 0 14px"><select id="ttsvoice" style="width:100%;padding:10px;font:inherit;border-radius:10px">
+      <option value="auto">自動（不同角色用不同音高）</option>${zhVoices.map(v => `<option value="${esc(v.name)}"${S.tts.voice === v.name ? ' selected' : ''}>${esc(v.name)}（${esc(v.lang)}）</option>`).join('')}</select>
+      ${zhVoices.length ? '' : '<div class="muted" style="font-size:13px;margin-top:6px">這支手機找不到中文語音，請到系統設定下載中文語音。</div>'}</div>
+    <div class="btn-row"><button class="btn" data-tts="test">試聽</button><button class="btn primary" data-do="close" style="flex:1">完成</button></div>`);
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-ttsset]'); if (!b) return;
+  const v = b.dataset.v, k = b.dataset.ttsset;
+  S.tts[k] = k === 'rate' ? +v : k === 'name' ? v === 'true' : v; save();
+  $$('[data-ttsset="' + k + '"]').forEach(x => x.classList.toggle('on', x === b));
+});
+document.addEventListener('change', e => { if (e.target.id === 'ttsvoice') { S.tts.voice = e.target.value; save(); } });
 
 /* ---------- 筆記、場景跳轉、備份 ---------- */
 function rerender() { const y = scrollY; render(); if (S.mode !== 'rehearse') scrollTo(0, y); }
@@ -470,7 +558,7 @@ async function wake(on) {
 
 /* ---------- 事件 ---------- */
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-do],[data-mode],[data-opt],[data-chk],[data-nav],[data-role],[data-go],[data-note],[data-scene],.covered,.rehearse .line,#overlay');
+  const t = e.target.closest('[data-do],[data-mode],[data-opt],[data-chk],[data-nav],[data-role],[data-go],[data-note],[data-scene],[data-tts],.covered,.rehearse .line,#overlay');
   if (!t) return;
   if (t.id === 'overlay') { if (e.target === t) closeSheet(); return; }
   const d = t.dataset;
@@ -491,6 +579,8 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.role) { S.roles = S.roles.includes(d.role) ? S.roles.filter(r => r !== d.role) : [...S.roles, d.role]; save(); const y = scrollY; render(); scrollTo(0, y); return; }
+  if (d.tts === 'test') { speechSynthesis.cancel(); utter('各位，我們準備好了嗎？來，從第一句開始。', 'kefan'); return; }
+  if (d.tts) return d.tts === 'toggle' ? (playing ? ttsStop() : ttsStart()) : d.tts === 'set' ? ttsSettings() : null;
   if (d.note) return openNote(d.note);
   if (d.scene) return gotoScene(d.scene);
   if (d.do) return doAction(d.do, e, t);
