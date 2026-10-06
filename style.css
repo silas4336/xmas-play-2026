@@ -61,7 +61,8 @@ h1, h2, h3 { line-height: 1.3; margin: 0; }
 .bar > i { display: block; height: 100%; background: var(--gold); border-radius: 99px; transition: width .3s; }
 
 /* 首頁 */
-.hero { padding: 26px 0 8px; }
+.hero { padding: 22px 0 6px; }
+.who-me { margin-top: 4px; font-size: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .hero small { color: var(--accent); font-weight: 700; letter-spacing: .12em; }
 .hero h1 { font-size: 30px; margin: 4px 0 8px; }
 .hero blockquote { margin: 0; color: var(--muted); font-size: 14px; border-left: 3px solid var(--mine-bd); padding-left: 10px; }
@@ -70,8 +71,8 @@ h1, h2, h3 { line-height: 1.3; margin: 0; }
 .count { color: var(--accent); font-weight: 700; }
 .prog-row { display: grid; grid-template-columns: 54px 1fr 56px; gap: 10px; align-items: center; margin: 8px 0; font-size: 14px; }
 .prog-row span:last-child { text-align: right; color: var(--muted); }
-.cta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
-.cta .btn { padding: 14px 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; }
+.cta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+.cta .btn { text-decoration: none; padding: 14px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; }
 .cta .btn b { font-size: 22px; line-height: 1; }
 
 /* 閱讀頁 */
@@ -213,3 +214,39 @@ mark { background: var(--mine-bd); color: #000; border-radius: 3px; }
 .tts { border: 1px solid var(--line); background: var(--card); border-radius: 99px; padding: 5px 12px; font-size: 13px; font-weight: 700; box-shadow: var(--shadow); }
 .tts.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .sheet .opts { flex-wrap: wrap; overflow: visible; }
+
+/* 首頁、目錄、說明 */
+.verse { margin: 22px 0 8px; color: var(--muted); font-size: 13px; border-left: 3px solid var(--mine-bd); padding-left: 10px; }
+.toc { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; width: 100%; text-align: left; padding: 11px 12px; margin: 5px 0; border-radius: 12px; border: 1px solid var(--line); background: var(--card); }
+.toc.here { border-color: var(--accent); }
+.toc .muted { font-size: 13px; }
+.helpbody { padding-top: 8px; font-size: 15px; }
+.helpbody p { margin: 0 0 8px; }
+details.card > summary { cursor: pointer; list-style: none; }
+details.card > summary::-webkit-details-marker { display: none; }
+/* 閃卡 */
+.fc { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 18px; margin: 14px 0 150px; min-height: 40vh; box-shadow: var(--shadow); cursor: pointer; }
+.fc-cue { font-size: calc(var(--fs) - 1px); line-height: 1.7; margin: 4px 0; opacity: .85; white-space: pre-line; }
+.fc-q { margin: 18px 0 8px; color: var(--accent); font-weight: 800; }
+.fc-ans { font-size: calc(var(--fs) + 2px); font-weight: 700; line-height: 1.75; background: var(--mine-bg); border-radius: 14px; padding: 14px; white-space: pre-line; }
+.fc-ans.hid { color: var(--muted); font-weight: 500; font-size: var(--fs); text-align: center; background: color-mix(in srgb, var(--mine-bd) 15%, transparent); }
+.fc-btns { position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + var(--safe-b)); display: flex; gap: 10px; padding: 10px 16px; max-width: 720px; margin: 0 auto; background: linear-gradient(transparent, var(--bg) 30%); }
+.fc-btns .btn { flex: 1; min-height: 56px; font-size: 18px; }
+.btn.good { background: var(--good); color: #fff; border-color: var(--good); }
+.btn.bad { background: #c0392b; color: #fff; border-color: #c0392b; }
+a.opt { text-decoration: none; color: var(--ink); }
+/* 列印 */
+@media print {
+  #nav, #toast, #overlay, .noprint, .rhead, .dock, .fabs, .nb, .fc-btns { display: none !important; }
+  body { background: #fff; color: #000; padding: 0; }
+  #app { max-width: none; padding: 0; }
+  .line { break-inside: avoid; border-left: 3px solid transparent; }
+  .line.mine { background: #e6e6e6 !important; border-left-color: #000; }
+  .line.cue { opacity: 1; }
+  .who { color: #000 !important; }
+  .scene { break-after: avoid; background: none; border: 1px solid #999; }
+  .ph { break-before: page; }
+  .ph:first-of-type { break-before: auto; }
+  .note-box { background: none; border: 1px solid #999; color: #000; }
+}
+.ph { font-size: 22px; margin: 22px 0 6px; }
