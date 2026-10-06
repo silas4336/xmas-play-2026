@@ -207,3 +207,9 @@ mark { background: var(--mine-bd); color: #000; border-radius: 3px; }
 .sheet textarea, .rn textarea { width: 100%; font: inherit; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); resize: vertical; }
 .rn { margin: 0 0 10px; }
 .rn summary { cursor: pointer; font-size: 14px; font-weight: 600; padding: 4px 0 8px; }
+
+/* 朗讀 */
+.dock .irow { display: flex; gap: 6px; align-items: center; justify-content: center; }
+.tts { border: 1px solid var(--line); background: var(--card); border-radius: 99px; padding: 5px 12px; font-size: 13px; font-weight: 700; box-shadow: var(--shadow); }
+.tts.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.sheet .opts { flex-wrap: wrap; overflow: visible; }
