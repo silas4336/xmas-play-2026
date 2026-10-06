@@ -82,10 +82,10 @@ function render() {
   window.onscroll = null;
   const view = { home: viewHome, read: viewRead, roles: viewRoles, schedule: viewSchedule, more: viewMore, crew: viewCrew, settings: viewSettings, cards: viewCards, print: viewPrint, help: viewHelp }[route.name] || viewHome;
   const app = $('#app');
-  app.className = '';
+  app.className = route.name === 'read' ? 'read-wide' : route.name;
   app.innerHTML = view();
   const tab = ['crew', 'settings', 'print', 'help', 'roles'].includes(route.name) ? 'more' : route.name === 'cards' ? 'home' : route.name;
-  $('#nav').innerHTML = NAV.map(([k, t, ic, href]) => `<a href="${href}" class="${k === tab ? 'on' : ''}"><svg viewBox="0 0 24 24">${ICONS[ic]}</svg>${t}</a>`).join('');
+  $('#nav').innerHTML = '<span class="brand">🎭 聖誕劇劇本</span>' + NAV.map(([k, t, ic, href]) => `<a href="${href}" class="${k === tab ? 'on' : ''}"><svg viewBox="0 0 24 24">${ICONS[ic]}</svg>${t}</a>`).join('');
   if (route.name === 'read') afterRead();
   else window.scrollTo(0, 0);
   maybeTip();
@@ -222,6 +222,10 @@ function viewRead() {
   }
   if (reh) opts.push(`<button class="opt${S.cover ? ' on' : ''}" data-opt="cover">丟本（蓋住我的台詞）</button>`);
   opts.push('<button class="opt" data-do="opts">⋯ 更多</button>');
+  const toc = `<div class="side-toc"><div class="roles-h">場景目錄</div>${D.script.acts.map(a => `<div class="toc-act">第${'一二三'[a.n - 1]}幕</div>` + a.scenes.map(sc => {
+    const mc = f.length ? sc.items.filter(i => isMine(i, f)).length : 0;
+    return `<button class="toc2${a.n === n ? ' here' : ''}" data-sg="${a.n}:${sc.id}" data-scid="${sc.id}"><span>${sc.no}．${esc(sc.title)}</span>${mc ? `<span class="chip gold">${mc}</span>` : ''}</button>`;
+  }).join('')).join('')}</div>`;
   const pr = memo && f.length ? myProgress(f).find(p => p.n === n) : null;
   return `
   <div class="rhead" id="rhead">
@@ -230,6 +234,7 @@ function viewRead() {
     <div class="rrow"><div class="seg">${modes.map(([k, t]) => `<button data-mode="${k}" class="${S.mode === k ? 'on' : ''}">${t}</button>`).join('')}</div></div>
     ${opts.length ? `<div class="rrow opts">${opts.join('')}</div>` : ''}
     ${pr && pr.total ? `<div class="rrow" style="font-size:12px;color:var(--muted)"><div class="bar" style="flex:1"><i style="width:${pr.done / pr.total * 100}%"></i></div><span id="progtxt">本幕已背熟 ${pr.done}/${pr.total}</span></div>` : ''}
+    ${toc}
   </div>
   ${roleBanner}${noRole}
   <div class="script${reh ? ' rehearse' : ''}" id="script">${html || '<p class="muted">這一幕沒有符合的台詞。</p>'}</div>
@@ -260,12 +265,21 @@ function afterRead() {
   hookScroll();
 }
 
-let lastY = 0, scrollT = 0;
+let lastY = 0, scrollT = 0, tocRaf = 0;
+function markTocCur() { // 電腦版：左側目錄標出目前讀到哪一場
+  tocRaf = 0;
+  const hs = $$('.scene'); if (!hs.length) return;
+  let cur = [...hs].filter(h => h.getBoundingClientRect().top <= 140).pop() || hs[0];
+  const cl = S.mode === 'rehearse' && $('.line.cursor'); // 彩排：以游標所在的場景為準
+  if (cl) { let e = cl.previousElementSibling; while (e && !e.classList.contains('scene')) e = e.previousElementSibling; if (e) cur = e; }
+  $$('.toc2').forEach(b => b.classList.toggle('cur', b.dataset.scid === cur.id));
+}
 function hookScroll() {
   lastY = window.scrollY;
   window.onscroll = () => {
     const y = window.scrollY, head = $('#rhead');
     if (head) head.classList.toggle('hide', y > lastY && y > 120);
+    if (!tocRaf) tocRaf = requestAnimationFrame(markTocCur);
     lastY = y;
     clearTimeout(scrollT);
     scrollT = setTimeout(() => {
@@ -286,6 +300,7 @@ function setCursor(i, scroll = true, quiet = false) {
   S.last = { act: route.act, line: els[cur].dataset.id }; save();
   if (S.haptic && !quiet && els[cur].dataset.mine && navigator.vibrate) navigator.vibrate(40);
   if (playing && !ttsInternal) restartTts();
+  markTocCur();
   const nxt = els.findIndex((e, k) => k > cur && e.dataset.mine);
   const info = $('#info');
   if (info) info.textContent = els[cur].dataset.mine ? '輪到你了！' : !S.roles.length ? '請先選擇角色' : nxt < 0 ? '本幕你的台詞已結束' : `再 ${nxt - cur} 句輪到你`;
@@ -526,7 +541,7 @@ document.addEventListener('change', e => { if (e.target.id === 'ttsvoice') { S.t
 function keepRender() {
   let id = null; const act = route.act;
   if (route.name === 'read') {
-    const cl = S.mode === 'rehearse' ? $('.line.cursor') : $$('.line').find(e => e.getBoundingClientRect().top >= 100);
+    const cl = S.mode === 'rehearse' ? $('.line.cursor') : $$('.line').find(e => e.getBoundingClientRect().top >= (matchMedia('(min-width:1024px)').matches ? 60 : 100));
     id = cl && cl.dataset.id;
     if (id) S.last = { act, line: id };
   }
