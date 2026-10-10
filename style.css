@@ -71,8 +71,8 @@ h1, h2, h3 { line-height: 1.3; margin: 0; }
 .count { color: var(--accent); font-weight: 700; }
 .prog-row { display: grid; grid-template-columns: 54px 1fr 56px; gap: 10px; align-items: center; margin: 8px 0; font-size: 14px; }
 .prog-row span:last-child { text-align: right; color: var(--muted); }
-.cta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
-.cta .btn { text-decoration: none; padding: 14px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; }
+.cta { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
+.cta .btn { text-decoration: none; padding: 14px 2px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; }
 .cta .btn b { font-size: 22px; line-height: 1; }
 
 /* 閱讀頁 */
@@ -326,3 +326,9 @@ summary.roles-h::-webkit-details-marker { display: none; }
   .fc { margin-bottom: 120px; }
 }
 @media (hover: hover) { .btn:hover, .opt:hover, .toc:hover, .tabs a:hover, .seg button:hover { filter: brightness(.96); } }
+
+/* 聽劇本 */
+.dock .pad.five { gap: 6px; padding: 8px 6px; }
+.dock .pad.five button { width: 52px; font-size: 20px; }
+.dock .pad.five .main { width: 74px; }
+.listen .line.cursor { background: var(--card); }

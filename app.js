@@ -6,7 +6,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const KEY = 'xmas-play-v1';
 const DEF = {
   roles: [], font: 19, theme: 'auto', mastered: {}, mode: 'read', onlyMine: false, hint: 'first',
-  unmasteredOnly: false, flaggedOnly: false, myScenesOnly: false, notes: {}, flags: {}, roleNotes: {}, cover: false, tts: { rate: 1, mine: 'auto', name: true, voice: 'auto' }, keepAwake: true, haptic: true, onboarded: false, tipsSeen: {}, prompts: {}, cards: { scope: 0, deck: 'unmastered', shuffle: true }, showPast: false, last: { act: 1, line: null },
+  unmasteredOnly: false, flaggedOnly: false, myScenesOnly: false, notes: {}, flags: {}, roleNotes: {}, cover: false, tts: { rate: 1, mine: 'auto', name: true, narr: true, voice: 'auto' }, keepAwake: true, haptic: true, onboarded: false, tipsSeen: {}, prompts: {}, cards: { scope: 0, deck: 'unmastered', shuffle: true }, showPast: false, last: { act: 1, line: null },
 };
 let S = { ...DEF };
 try { S = { ...DEF, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { /* 無痕模式等情況 */ }
@@ -56,7 +56,7 @@ async function boot() {
     linesByAct[a.n] = a.scenes.flatMap(s => s.items.filter(i => i.t === 'line'));
   });
   window.addEventListener('hashchange', render);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) ttsStop(); if (!document.hidden) wake(route.name === 'read' && S.mode === 'rehearse'); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) ttsStop(); if (!document.hidden) wake(route.name === 'read' && curMode()); });
   render();
   if (!S.onboarded) setTimeout(openTour, 250);
   else if (!S.roles.length && !sessionStorage.getItem('asked')) { sessionStorage.setItem('asked', '1'); setTimeout(() => openRolePicker(true), 300); }
@@ -97,6 +97,7 @@ const isMine = (it, f) => it.t === 'line' && it.who.some(w => f.includes(w));
 const roleName = id => (roleById[id] || {}).name || id;
 const myNames = () => S.roles.map(roleName);
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1800); }
+const curMode = () => S.mode === 'rehearse' || S.mode === 'listen'; // 以「游標」逐句進行的模式
 const WEEK = '日一二三四五六';
 const evDate = e => new Date(`${e.date}T${e.time}:00`);
 const dayDiff = (a, b) => Math.round((new Date(a.getFullYear(), a.getMonth(), a.getDate()) - new Date(b.getFullYear(), b.getMonth(), b.getDate())) / 864e5);
@@ -141,6 +142,7 @@ function viewHome() {
     <button class="btn" data-go="read"><b>📖</b>閱讀</button>
     <button class="btn" data-go="memo"><b>🧠</b>背誦</button>
     <button class="btn" data-go="rehearse"><b>🎬</b>彩排</button>
+    <button class="btn" data-go="listen"><b>🎧</b>聽劇本</button>
     <a class="btn" href="#/cards"><b>🃏</b>閃卡</a>
   </div>
   <div class="card"><h3>下一次排練</h3>${nextHtml}<div class="btn-row" style="margin-top:12px">
@@ -178,13 +180,13 @@ function lineHtml(it, o) {
 
 function viewRead() {
   const n = route.act, act = D.script.acts[n - 1], f = focusRoles();
-  const memo = S.mode === 'memo', reh = S.mode === 'rehearse';
+  const memo = S.mode === 'memo', reh = S.mode === 'rehearse', lis = S.mode === 'listen', cm = reh || lis;
   const flat = [];
   const hasMine = sc => sc.items.some(i => isMine(i, f));
   const scenes = act.scenes.filter(sc => !(S.myScenesOnly && f.length) || hasMine(sc));
   scenes.forEach(sc => { flat.push({ t: 'scene', sc }); sc.items.forEach(i => flat.push(i)); });
   const target = it => isMine(it, f) && !(memo && !inPractice(it.id));
-  const filtering = S.onlyMine && !reh && f.length;
+  const filtering = S.onlyMine && !cm && f.length;
   const keep = new Array(flat.length).fill(!filtering), cueIdx = new Set();
   if (filtering) {
     flat.forEach((it, i) => {
@@ -212,10 +214,10 @@ function viewRead() {
   });
   const roleBanner = route.q.role ? `<div class="banner">正在看「${esc(roleName(route.q.role))}」的台詞。<a href="#/read/${n}">回到我的角色</a></div>` : '';
   const noRole = !f.length ? `<div class="banner">還沒選擇角色，所以沒辦法標出你的台詞。<button class="btn small" data-do="pick">選擇角色</button></div>` : '';
-  const modes = [['read', '閱讀'], ['memo', '背誦'], ['rehearse', '彩排']];
+  const modes = [['read', '閱讀'], ['memo', '背誦'], ['rehearse', '彩排'], ['listen', '聽劇本']];
   const opts = [];
   if (f.length && !route.q.role) opts.push(`<button class="opt mine" data-do="pick">👤 ${esc(f.map(roleName).join('、'))}</button>`);
-  if (!reh) opts.push(`<button class="opt${S.onlyMine ? ' on' : ''}" data-opt="onlyMine">只看我的台詞</button>`);
+  if (!cm) opts.push(`<button class="opt${S.onlyMine ? ' on' : ''}" data-opt="onlyMine">只看我的台詞</button>`);
   if (memo) {
     opts.push(`<button class="opt${S.hint === 'first' ? ' on' : ''}" data-opt="hint">首字提示</button>`);
     opts.push(`<button class="opt${S.unmasteredOnly ? ' on' : ''}" data-opt="unmasteredOnly">只練還沒背熟的</button>`);
@@ -237,8 +239,11 @@ function viewRead() {
     ${toc}
   </div>
   ${roleBanner}${noRole}
-  <div class="script${reh ? ' rehearse' : ''}" id="script">${html || '<p class="muted">這一幕沒有符合的台詞。</p>'}</div>
-  ${reh ? `<div class="dock"><div class="irow"><div class="info" id="info"></div>${hasTTS ? '<button class="tts" id="ttsbtn" data-tts="toggle">🔊 朗讀對詞</button><button class="tts" data-tts="set" aria-label="朗讀設定">⚙</button>' : ''}</div><div class="pad">
+  <div class="script${cm ? ' rehearse' : ''}${lis ? ' listen' : ''}" id="script">${html || '<p class="muted">這一幕沒有符合的台詞。</p>'}</div>
+  ${lis ? `<div class="dock"><div class="irow"><div class="info" id="info"></div>${hasTTS ? `<button class="tts" id="spd" data-tts="speed">${S.tts.rate}×</button><button class="tts" data-tts="set" aria-label="朗讀設定">⚙</button>` : ''}</div><div class="pad five">
+      <button data-nav="mprev" aria-label="上一場">⏮</button><button data-nav="prev" aria-label="上一句">‹</button>
+      <button class="main" id="ttsbtn" data-tts="toggle" aria-label="播放或暫停">▶</button><button data-nav="next" aria-label="下一句">›</button><button data-nav="mnext" aria-label="下一場">⏭</button></div></div>`
+    : reh ? `<div class="dock"><div class="irow"><div class="info" id="info"></div>${hasTTS ? '<button class="tts" id="ttsbtn" data-tts="toggle">🔊 朗讀對詞</button><button class="tts" data-tts="set" aria-label="朗讀設定">⚙</button>' : ''}</div><div class="pad">
       <button data-nav="mprev" aria-label="我的上一句">⏮</button><button data-nav="prev" aria-label="上一句">◀</button>
       <button class="main" data-nav="next" aria-label="下一句">▶</button><button data-nav="mnext" aria-label="我的下一句">⏭</button></div></div>`
     : (f.length ? '<div class="fabs"><button data-nav="mprev" aria-label="我的上一句">▲ 上一句</button><button data-nav="mnext" aria-label="我的下一句">▼ 我的下一句</button></div>' : '')}`;
@@ -246,7 +251,7 @@ function viewRead() {
 
 function afterRead() {
   const app = $('#app');
-  if (S.mode === 'rehearse') {
+  if (curMode()) {
     const els = $$('.line');
     const idx = els.findIndex(e => e.dataset.id === (route.q.line || (S.last.act === route.act ? S.last.line : null)));
     cur = Math.max(0, idx);
@@ -257,12 +262,13 @@ function afterRead() {
   if (route.q.line) {
     const el = $(`.line[data-id="${CSS.escape(route.q.line)}"]`);
     if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('hl'); }
-  } else if (S.mode !== 'rehearse' && S.last.line && S.last.act === route.act && route.q.resume) {
+  } else if (!curMode() && S.last.line && S.last.act === route.act && route.q.resume) {
     const el = $(`.line[data-id="${CSS.escape(S.last.line)}"]`);
     if (el) el.scrollIntoView({ block: 'start' });
   } else if (route.q.scene) setTimeout(() => gotoScene(route.q.scene), 30);
-  else if (S.mode !== 'rehearse') window.scrollTo(0, 0);
+  else if (!curMode()) window.scrollTo(0, 0);
   hookScroll();
+  if (listenResume && S.mode === 'listen') { listenResume = false; ttsStart(); } // 聽劇本：自動接著念下一幕
 }
 
 let lastY = 0, scrollT = 0, tocRaf = 0;
@@ -270,7 +276,7 @@ function markTocCur() { // 電腦版：左側目錄標出目前讀到哪一場
   tocRaf = 0;
   const hs = $$('.scene'); if (!hs.length) return;
   let cur = [...hs].filter(h => h.getBoundingClientRect().top <= 140).pop() || hs[0];
-  const cl = S.mode === 'rehearse' && $('.line.cursor'); // 彩排：以游標所在的場景為準
+  const cl = curMode() && $('.line.cursor'); // 彩排：以游標所在的場景為準
   if (cl) { let e = cl.previousElementSibling; while (e && !e.classList.contains('scene')) e = e.previousElementSibling; if (e) cur = e; }
   $$('.toc2').forEach(b => b.classList.toggle('cur', b.dataset.scid === cur.id));
 }
@@ -283,7 +289,7 @@ function hookScroll() {
     lastY = y;
     clearTimeout(scrollT);
     scrollT = setTimeout(() => {
-      if (S.mode === 'rehearse') return;
+      if (curMode()) return;
       const first = $$('.line').find(e => e.getBoundingClientRect().top > 100);
       if (first) { S.last = { act: route.act, line: first.dataset.id }; save(); }
     }, 400);
@@ -298,12 +304,22 @@ function setCursor(i, scroll = true, quiet = false) {
   if (scroll) els[cur].scrollIntoView({ block: 'center', behavior: quiet ? 'auto' : 'smooth' });
   else if (quiet) els[cur].scrollIntoView({ block: 'center' });
   S.last = { act: route.act, line: els[cur].dataset.id }; save();
-  if (S.haptic && !quiet && els[cur].dataset.mine && navigator.vibrate) navigator.vibrate(40);
+  if (S.haptic && !quiet && S.mode === 'rehearse' && els[cur].dataset.mine && navigator.vibrate) navigator.vibrate(40);
   if (playing && !ttsInternal) restartTts();
   markTocCur();
   const nxt = els.findIndex((e, k) => k > cur && e.dataset.mine);
   const info = $('#info');
-  if (info) info.textContent = els[cur].dataset.mine ? '輪到你了！' : !S.roles.length ? '請先選擇角色' : nxt < 0 ? '本幕你的台詞已結束' : `再 ${nxt - cur} 句輪到你`;
+  if (info) info.textContent = S.mode === 'listen' ? `第 ${route.act} 幕　${cur + 1} / ${els.length} 句` : els[cur].dataset.mine ? '輪到你了！' : !S.roles.length ? '請先選擇角色' : nxt < 0 ? '本幕你的台詞已結束' : `再 ${nxt - cur} 句輪到你`;
+}
+function sceneJump(dir) { // 聽劇本：上一場／下一場，到頭了就換幕
+  const hs = $$('.scene'), cl = $$('.line')[cur]; if (!hs.length || !cl) return;
+  let e = cl.previousElementSibling; while (e && !e.classList.contains('scene')) e = e.previousElementSibling;
+  const i = Math.max(0, hs.indexOf(e)), t = hs[i + dir];
+  if (t) return gotoScene(t.id);
+  const na = route.act + dir;
+  if (na < 1 || na > 3) return toast(dir > 0 ? '已經是最後一場了' : '已經是第一場了');
+  listenResume = playing; S.last = { act: na, line: null }; save();
+  location.hash = dir > 0 ? `#/read/${na}` : `#/read/${na}?scene=${D.script.acts[na - 1].scenes.slice(-1)[0].id}`;
 }
 function jumpMine(dir) {
   const f = focusRoles();
@@ -456,7 +472,7 @@ function openSearch() {
 
 /* ---------- 語音朗讀（對詞）：念別人的台詞，輪到我時停下或等我念 ---------- */
 const hasTTS = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
-let zhVoices = [], playing = false, ttsToken = 0, ttsInternal = false, ttsCancel = null;
+let listenResume = false, zhVoices = [], playing = false, ttsToken = 0, ttsInternal = false, ttsCancel = null;
 function loadVoices() { zhVoices = speechSynthesis.getVoices().filter(v => /^zh/i.test(v.lang)); }
 if (hasTTS) { loadVoices(); speechSynthesis.addEventListener && speechSynthesis.addEventListener('voiceschanged', loadVoices); }
 const speakable = t => t.normalize('NFKC').replace(/[（(［\[][^）)］\]]*[）)］\]]/g, '').replace(/[.．…。]{2,}/g, '，').replace(/\s+/g, ' ').trim();
@@ -483,14 +499,14 @@ function utter(text, rid, opt = {}) {
   });
 }
 const wait = ms => new Promise(res => { const t = setTimeout(res, ms); ttsCancel = () => { clearTimeout(t); res(); }; });
-function ttsUI() { const b = $('#ttsbtn'); if (b) { b.textContent = playing ? '⏸ 暫停朗讀' : '🔊 朗讀對詞'; b.classList.toggle('on', playing); } }
+function ttsUI() { const b = $('#ttsbtn'); if (b) { b.textContent = S.mode === 'listen' ? (playing ? '⏸' : '▶') : playing ? '⏸ 暫停朗讀' : '🔊 朗讀對詞'; b.classList.toggle('on', playing); } }
 function ttsStart() {
   if (!hasTTS) return toast('這個瀏覽器不支援朗讀');
-  if (route.name !== 'read' || S.mode !== 'rehearse') return;
-  if (!S.roles.length) toast('還沒選角色，會全部念出來');
+  if (route.name !== 'read' || !curMode()) return;
+  if (!S.roles.length && S.mode === 'rehearse') toast('還沒選角色，會全部念出來');
   playing = true; ttsToken++; speechSynthesis.cancel(); ttsUI();
   const el = $$('.line')[cur];
-  if (el && el.dataset.mine && S.tts.mine === 'pause') { ttsInternal = true; setCursor(cur + 1); ttsInternal = false; }
+  if (el && el.dataset.mine && S.mode === 'rehearse' && S.tts.mine === 'pause') { ttsInternal = true; setCursor(cur + 1); ttsInternal = false; }
   ttsLoop(ttsToken);
 }
 function ttsStop() {
@@ -500,10 +516,23 @@ function ttsStop() {
   if (was) ttsUI();
 }
 function restartTts() { const tok = ++ttsToken; speechSynthesis.cancel(); if (ttsCancel) ttsCancel(); setTimeout(() => { if (playing && tok === ttsToken) ttsLoop(tok); }, 80); }
+const CN = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+function narrationFor(el) { // 這一句之前的場景標題、舞台指示
+  const out = []; let p = el.previousElementSibling;
+  while (p && !p.classList.contains('line')) {
+    if (p.classList.contains('scene')) { const m = $('b', p).textContent.match(/場景\s*(\d+)・?(.*)/); out.unshift(m ? `場景${CN[+m[1]] || m[1]}，${m[2]}。` : ''); }
+    else if (p.classList.contains('stage')) out.unshift(speakable(p.textContent.replace(/^（|）$/g, '')) + '。');
+    p = p.previousElementSibling;
+  }
+  return out.filter(Boolean);
+}
 async function ttsLoop(token) {
   while (playing && token === ttsToken) {
     const els = $$('.line'), el = els[cur]; if (!el) break;
-    const it = allLines.get(el.dataset.id), mine = !!el.dataset.mine;
+    const it = allLines.get(el.dataset.id), mine = !!el.dataset.mine && S.mode === 'rehearse';
+    if (S.mode === 'listen' && S.tts.narr) { // 旁白：場景標題與舞台指示
+      for (const t of narrationFor(el)) { if (token !== ttsToken) return; await utter(t, 'narrator'); }
+    }
     if (mine && S.tts.mine !== 'read') {
       if (S.tts.mine === 'pause') { ttsStop(); return toast('輪到你了，念完按「朗讀對詞」繼續'); }
       await wait((speakable(it.text).length * 320 + 1500) / S.tts.rate); // 等我自己念
@@ -512,15 +541,18 @@ async function ttsLoop(token) {
       for (const c of chunks(speakable(it.text))) { if (token !== ttsToken) return; await utter(c, it.who[0]); }
     }
     if (token !== ttsToken || !playing) return;
-    if (cur >= els.length - 1) { ttsStop(); return toast('這一幕結束了'); }
+    if (cur >= els.length - 1) {
+      if (S.mode === 'listen' && route.act < 3) { listenResume = true; S.last = { act: route.act + 1, line: null }; save(); location.hash = `#/read/${route.act + 1}`; return; }
+      ttsStop(); return toast(S.mode === 'listen' ? '全劇聽完了' : '這一幕結束了');
+    }
     ttsInternal = true; setCursor(cur + 1); ttsInternal = false;
   }
 }
 function ttsSettings() {
   const seg = (k, opts) => `<div class="opts" style="margin:6px 0 14px">${opts.map(([v, t]) => `<button class="opt${String(S.tts[k]) === String(v) ? ' on' : ''}" data-ttsset="${k}" data-v="${v}">${t}</button>`).join('')}</div>`;
   showSheet(`<h2>語音朗讀設定</h2>
-    <p class="muted" style="margin:0 0 12px;font-size:14px">在彩排模式按「朗讀對詞」，會用語音念出別人的台詞，輪到你就停下來等你念。聲音由手機提供。</p>
-    <b>輪到我的台詞時</b>${seg('mine', [['auto', '等我念（自動繼續）'], ['pause', '停下來，我按繼續'], ['read', '也念出來（聽範本）']])}
+    <p class="muted" style="margin:0 0 12px;font-size:14px">${S.mode === 'listen' ? '「聽劇本」會用語音把整幕念出來，念到哪句畫面就跟到哪句。' : '在彩排模式按「朗讀對詞」，會用語音念出別人的台詞，輪到你就停下來等你念。'}聲音由手機提供。</p>
+    ${S.mode === 'listen' ? `<b>旁白（場景標題、舞台指示）</b>${seg('narr', [[true, '要念'], [false, '不要']])}` : `<b>輪到我的台詞時</b>${seg('mine', [['auto', '等我念（自動繼續）'], ['pause', '停下來，我按繼續'], ['read', '也念出來（聽範本）']])}`}
     <b>朗讀速度</b>${seg('rate', [[0.8, '慢'], [1, '正常'], [1.2, '快'], [1.4, '很快']])}
     <b>先念角色名</b>${seg('name', [[true, '要'], [false, '不要']])}
     <b>聲音</b><div style="margin:6px 0 14px"><select id="ttsvoice" style="width:100%;padding:10px;font:inherit;border-radius:10px">
@@ -531,7 +563,8 @@ function ttsSettings() {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-ttsset]'); if (!b) return;
   const v = b.dataset.v, k = b.dataset.ttsset;
-  S.tts[k] = k === 'rate' ? +v : k === 'name' ? v === 'true' : v; save();
+  S.tts[k] = k === 'rate' ? +v : (k === 'name' || k === 'narr') ? v === 'true' : v; save();
+  if (k === 'rate' && $('#spd')) $('#spd').textContent = S.tts.rate + '×';
   $$('[data-ttsset="' + k + '"]').forEach(x => x.classList.toggle('on', x === b));
 });
 document.addEventListener('change', e => { if (e.target.id === 'ttsvoice') { S.tts.voice = e.target.value; save(); } });
@@ -541,14 +574,14 @@ document.addEventListener('change', e => { if (e.target.id === 'ttsvoice') { S.t
 function keepRender() {
   let id = null; const act = route.act;
   if (route.name === 'read') {
-    const cl = S.mode === 'rehearse' ? $('.line.cursor') : $$('.line').find(e => e.getBoundingClientRect().top >= (matchMedia('(min-width:1024px)').matches ? 60 : 100));
+    const cl = curMode() ? $('.line.cursor') : $$('.line').find(e => e.getBoundingClientRect().top >= (matchMedia('(min-width:1024px)').matches ? 60 : 100));
     id = cl && cl.dataset.id;
     if (id) S.last = { act, line: id };
   }
   const y = scrollY;
   render();
   if (route.name !== 'read') return scrollTo(0, y);
-  if (!id || S.mode === 'rehearse') return;
+  if (!id || curMode()) return;
   const order = linesByAct[act].map(l => l.id), at = order.indexOf(id);
   const el = [...order.slice(at), ...order.slice(0, at).reverse()].map(c => $(`.line[data-id="${CSS.escape(c)}"]`)).find(Boolean);
   if (el) el.scrollIntoView({ block: 'start' });
@@ -560,7 +593,7 @@ function openOpts() {
   const row = (t, d, k, on) => `<div class="set"><div><b>${t}</b><div class="muted" style="font-size:13px">${d}</div></div>${swHtml(k, on)}</div>`;
   const reh = S.mode === 'rehearse', memo = S.mode === 'memo';
   showSheet(`<div id="optsheet"><h2>閱讀選項</h2>
-    ${reh ? '' : row('只看我的台詞', '隱藏別人的台詞，只留你的台詞和前一句（當提詞）', 'onlyMine', S.onlyMine)}
+    ${curMode() ? '' : row('只看我的台詞', '隱藏別人的台詞，只留你的台詞和前一句（當提詞）', 'onlyMine', S.onlyMine)}
     ${S.roles.length ? row('只看我有戲的場景', '整場都沒有你的戲就隱藏', 'myScenesOnly', S.myScenesOnly) : ''}
     ${memo ? row('首字提示', '蓋住的台詞顯示每句的第一個字', 'hint', S.hint === 'first') + row('只練還沒背熟的', '打勾背熟的台詞不再蓋住', 'unmasteredOnly', S.unmasteredOnly) + row('只練常忘（⚠）的', '只蓋住標了 ⚠ 的台詞', 'flaggedOnly', S.flaggedOnly) : ''}
     ${reh ? row('丟本', '蓋住你的台詞，點一下才顯示；被你點開的次數會記成「常忘」', 'cover', S.cover) : ''}
@@ -681,6 +714,7 @@ function viewHelp() {
   ${sec('閱讀', '<p>頂端切換三幕。📑 可以看場景目錄、直接跳到某一場。「只看我的台詞」會把別人的台詞收起來，只留你的台詞和前一句（提詞用）。右下角的「▼ 我的下一句」可以一句一句跳。</p>')}
   ${sec('背誦', '<p>你的台詞會被蓋住，點一下才顯示，念完打勾表示背熟。可以選「每句首字」提示，也能只練還沒背熟或 ⚠ 標記的。</p><p>閃卡練習：顯示前一句，你回想台詞再翻牌，記得或忘了都會記錄。</p>')}
   ${sec('彩排', '<p>目前的句子會放大框起來，按 ▶ 或左右滑動換句。「丟本」會蓋住你的台詞，被你點開提詞的次數會累計，兩次以上自動標 ⚠。</p><p>「🔊 朗讀對詞」會用語音念別人的台詞，輪到你就停下或等你念。</p>')}
+  ${sec('聽劇本', '<p>在閱讀頁上方選「聽劇本」，按 ▶，手機會用語音念出整幕劇本（含場景標題和舞台指示），不同角色用不同音高，念到哪句畫面就跟到哪句。可以用 ‹ › 換句、⏮ ⏭ 換場景、調整速度；一幕念完會自動接下一幕。</p><p>注意：要保持畫面亮著，鎖屏或切到別的 App 就會停。</p>')}
   ${sec('筆記', '<p>每句台詞旁的 ✎ 可以寫筆記、標 ⚠；每個場景標題旁也有。角色頁可以寫角色小傳。筆記只存在你的手機，別人看不到。</p>')}
   ${sec('備份與換手機', '<p>設定頁可以匯出備份檔，換手機或清除瀏覽資料前先匯出，到新手機再匯入。</p>')}
   <a href="#/more">‹ 返回</a>`;
@@ -702,7 +736,7 @@ function openNote(key) {
 }
 function gotoScene(id) {
   const el = document.getElementById(id); if (!el) return;
-  if (S.mode === 'rehearse') {
+  if (curMode()) {
     let n = el.nextElementSibling; while (n && !n.classList.contains('line')) n = n.nextElementSibling;
     if (n) return setCursor($$('.line').indexOf(n));
   }
@@ -727,7 +761,7 @@ document.addEventListener('change', e => {
 let tx = null;
 document.addEventListener('touchstart', e => { tx = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
 document.addEventListener('touchend', e => {
-  if (!tx || route.name !== 'read' || S.mode !== 'rehearse' || !$('#overlay').hidden || e.target.closest('.opts,.dock,.rhead')) return;
+  if (!tx || route.name !== 'read' || !curMode() || !$('#overlay').hidden || e.target.closest('.opts,.dock,.rhead')) return;
   const dx = e.changedTouches[0].clientX - tx[0], dy = e.changedTouches[0].clientY - tx[1]; tx = null;
   if (Math.abs(dx) > 70 && Math.abs(dy) < 45) setCursor(cur + (dx < 0 ? 1 : -1));
 }, { passive: true });
@@ -778,6 +812,7 @@ const TIPS = {
   read: ['閱讀', '📑 看場景目錄、🔍 搜尋台詞；右下角「▼ 我的下一句」一句句跳。上方可以切換「背誦」和「彩排」。'],
   memo: ['背誦', '你的台詞被蓋住了，點一下顯示，念對了按 ✓。想只練還沒背熟的，打開上方的選項。'],
   rehearse: ['彩排', '按 ▶ 或左右滑動換句；「丟本」會蓋住你的台詞，點開提詞會被記下來；🔊 讓手機念別人的台詞。'],
+  listen: ['聽劇本', '按 ▶ 開始，手機會用不同的聲音念出整幕劇本，畫面會跟著念到的那句。⏮ ⏭ 換場景。要保持畫面亮著，鎖屏後會停。'],
   cards: ['閃卡', '先自己回想台詞，再點卡片看答案。按「忘了」會記下來，之後可以專門複習。'],
   roles: ['角色', '可以複選自己的角色，也能寫角色小傳。「看他的台詞」可以只看某個角色。'],
   schedule: ['行程', '灰色的是已經過的排練。可以匯出到手機行事曆，排練前一小時會提醒你。'],
@@ -790,7 +825,7 @@ function maybeTip() {
   setTimeout(() => {
     if (location.hash !== at || !$('#overlay').hidden || $('.tip') || S.tipsSeen[key]) return;
     S.tipsSeen[key] = 1; save();
-    const d = document.createElement('div'); d.className = 'tip' + (key === 'rehearse' ? ' high' : '');
+    const d = document.createElement('div'); d.className = 'tip' + (key === 'rehearse' || key === 'listen' ? ' high' : '');
     d.innerHTML = `<b>${tip[0]}小提示</b><p>${tip[1]}</p><button class="btn small primary" data-tip="x">知道了</button>`;
     document.body.appendChild(d);
   }, 600);
@@ -833,10 +868,12 @@ document.addEventListener('click', e => {
     return;
   }
   if (d.nav) {
-    ({ next: () => setCursor(cur + 1), prev: () => setCursor(cur - 1), mnext: () => jumpMine(1), mprev: () => jumpMine(-1) })[d.nav]();
+    const lis = S.mode === 'listen';
+    ({ next: () => setCursor(cur + 1), prev: () => setCursor(cur - 1), mnext: () => lis ? sceneJump(1) : jumpMine(1), mprev: () => lis ? sceneJump(-1) : jumpMine(-1) })[d.nav]();
     return;
   }
   if (d.role) { S.roles = S.roles.includes(d.role) ? S.roles.filter(r => r !== d.role) : [...S.roles, d.role]; save(); const y = scrollY; render(); scrollTo(0, y); return; }
+  if (d.tts === 'speed') { const r = [0.8, 1, 1.2, 1.4], i = r.indexOf(S.tts.rate); S.tts.rate = r[(i + 1) % r.length]; save(); $('#spd').textContent = S.tts.rate + '×'; toast(`朗讀速度 ${S.tts.rate}×`); return; }
   if (d.tts === 'test') { speechSynthesis.cancel(); utter('各位，我們準備好了嗎？來，從第一句開始。', 'kefan'); return; }
   if (d.tts) return d.tts === 'toggle' ? (playing ? ttsStop() : ttsStart()) : d.tts === 'set' ? ttsSettings() : null;
   if (d.note) return openNote(d.note);
@@ -895,7 +932,8 @@ document.addEventListener('input', e => {
   save();
 });
 document.addEventListener('keydown', e => {
-  if (route.name !== 'read' || S.mode !== 'rehearse' || e.target.closest('input')) return;
+  if (route.name !== 'read' || !curMode() || e.target.closest('input,textarea,select') || !$('#overlay').hidden) return;
+  if (S.mode === 'listen' && e.key === ' ') { e.preventDefault(); return playing ? ttsStop() : ttsStart(); }
   if (e.key === 'ArrowDown' || e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); setCursor(cur + 1); }
   if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); setCursor(cur - 1); }
 });
