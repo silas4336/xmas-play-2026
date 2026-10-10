@@ -332,3 +332,20 @@ summary.roles-h::-webkit-details-marker { display: none; }
 .dock .pad.five button { width: 52px; font-size: 20px; }
 .dock .pad.five .main { width: 74px; }
 .listen .line.cursor { background: var(--card); }
+
+/* ===== 單一劇本畫面（取消模式） ===== */
+.line.cursor { outline: 3px solid var(--accent); outline-offset: -2px; background: var(--card); }
+.line.cursor.mine { background: var(--mine-bg); }
+.line.cursor .say { font-size: calc(var(--fs) + 2px); }
+.script { padding-bottom: 190px; }
+.cta1 { margin: 14px 0 6px; }
+.btn.big { width: 100%; min-height: 62px; font-size: 20px; display: flex; align-items: center; justify-content: center; text-decoration: none; border-radius: 16px; }
+.dock .pad.four { gap: 6px; padding: 8px 6px; width: min(100%, 520px); }
+.dock .pad.four button { width: auto; flex: 1; min-width: 0; height: 54px; font-size: 14px; font-weight: 700; padding: 0 4px; line-height: 1.2; }
+.dock .pad.four .main { flex: 1.1; }
+.chkrow { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 6px; }
+.chkrow .chk, .chkrow .fgt { position: static; width: auto; height: 34px; padding: 0 12px; border-radius: 99px; border: 2px solid var(--line); background: var(--card); color: var(--muted); font-weight: 700; font-size: 14px; }
+.chkrow .chk.on { background: var(--good); border-color: var(--good); color: #fff; }
+.chkrow .fgt:active { background: #c0392b; color: #fff; }
+.line.mine.memo { padding-right: 10px; padding-bottom: 52px; }
+@media (min-width: 1024px) { .dock .pad.four { width: min(100%, 560px); } .script { padding-bottom: 150px; } }
