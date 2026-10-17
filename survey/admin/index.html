@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>後台｜八大智能評量</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #14307a; --orange: #e8541e; --yellow: #f7c935; --teal: #1f8a9e;
+    --ink: #1a1a2e; --muted: #5b6275; --line: #d9dde8; --paper: #fbfbf8;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; color: var(--ink); line-height: 1.6;
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    background-color: var(--paper);
+    background-image: linear-gradient(#e6e9f0 1px, transparent 1px), linear-gradient(90deg, #e6e9f0 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+  .hidden { display: none !important; }
+
+  /* ---------- 頂端列 ---------- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px;
+    background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 8px 8px 8px 20px; }
+  .topbar b { color: var(--navy); font-weight: 900; letter-spacing: .04em; }
+  .ghost { font: inherit; font-size: .85rem; font-weight: 700; color: var(--ink); background: #fff; cursor: pointer;
+    border: 2px solid var(--ink); border-radius: 999px; padding: 6px 16px; }
+  .ghost:hover { background: var(--yellow); }
+
+  /* ---------- Hero ---------- */
+  .hero { position: relative; padding: 34px 0 6px; }
+  .hero h1 { margin: 0; font-weight: 900; line-height: 1.1; letter-spacing: .02em; color: var(--navy); font-size: clamp(2.4rem, 10vw, 4.8rem); }
+  .hero h1 em { font-style: normal; color: var(--orange); }
+  .hero .sub { margin: 14px 0 0; font-weight: 900; letter-spacing: .08em; font-size: clamp(1.1rem, 4vw, 1.7rem); }
+  .star { position: absolute; pointer-events: none; }
+  .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  .pill { display: inline-flex; gap: 10px; align-items: center; background: #fff; border: 2px solid var(--ink);
+    border-radius: 999px; padding: 7px 18px; font-weight: 700; font-size: .95rem; }
+  .pill b { color: var(--orange); font-weight: 900; }
+
+  main { padding: 22px 0 60px; }
+
+  /* ---------- 卡片 / 表單 ---------- */
+  .card { background: #fff; border: 2px solid var(--ink); border-radius: 24px; padding: 22px; margin-bottom: 20px;
+    box-shadow: 0 5px 0 rgba(26,26,46,.12); }
+  .card.note { background: #fff; border-color: var(--navy); box-shadow: none; }
+  .card.warn { background: #fff8d6; border-color: var(--yellow); box-shadow: none; }
+  .card h2 { margin: 0 0 14px; font-size: 1.25rem; font-weight: 900; padding-bottom: 8px; border-bottom: 3px solid var(--yellow); }
+  .card h3 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 900; }
+  .card p { margin: 0 0 6px; font-size: .92rem; color: #333a4d; }
+  .grid2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 640px) { .grid2 { grid-template-columns: 1fr 1fr; } .span2 { grid-column: 1 / -1; } }
+  .field label.lab { display: block; font-size: .82rem; font-weight: 700; color: var(--muted); margin-bottom: 5px; }
+  .req { color: var(--orange); }
+  input[type=text], input[type=password], select {
+    width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: #fff;
+    border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; outline: none; }
+  input[type=text]:focus, input[type=password]:focus, select:focus { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(232,84,30,.18); }
+  .checks { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  @media (min-width: 640px) { .checks { grid-template-columns: 1fr 1fr; } }
+  .checks label { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border: 2px solid var(--line);
+    border-radius: 14px; cursor: pointer; font-size: .95rem; }
+  .checks label:has(input:checked) { border-color: var(--orange); background: #fff4ee; }
+  input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--orange); }
+
+  /* ---------- 題目 ---------- */
+  .progress { position: sticky; top: 0; z-index: 5; margin: -22px -22px 16px; padding: 10px 22px; background: #fff;
+    border-bottom: 2px solid var(--line); border-radius: 22px 22px 0 0; }
+  .progress .bar { height: 10px; background: #eceef4; border-radius: 99px; overflow: hidden; }
+  .progress .bar i { display: block; height: 100%; width: 0; background: var(--orange); border-radius: 99px; transition: width .25s; }
+  .progress small { display: block; margin-top: 4px; font-weight: 700; color: var(--muted); font-size: .78rem; }
+  .q { border: 2px solid #e3e6ee; border-left: 6px solid var(--yellow); border-radius: 16px; padding: 14px 14px 12px; margin-bottom: 12px; background: #fff; transition: border-color .15s; }
+  .q.done { border-left-color: var(--teal); }
+  .q.missing { border-color: #d43b3b; border-left-color: #d43b3b; background: #fff5f5; }
+  .q p { margin: 0 0 10px; font-weight: 500; font-size: 1rem; color: var(--ink); }
+  .scale { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .scale label { position: relative; cursor: pointer; }
+  .scale input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .scale span { display: block; text-align: center; padding: 10px 0; border: 2px solid var(--line); border-radius: 12px; font-weight: 900; color: var(--muted); }
+  .scale label:hover span { border-color: var(--navy); }
+  .scale input:checked + span { background: var(--orange); border-color: var(--ink); color: #fff; }
+  .scale input:focus-visible + span { box-shadow: 0 0 0 4px rgba(232,84,30,.3); }
+  .ends { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); margin-top: 4px; }
+
+  /* ---------- 按鈕 ---------- */
+  .btn { font: inherit; font-weight: 900; letter-spacing: .08em; cursor: pointer; color: #fff; background: var(--orange);
+    border: 2px solid var(--ink); border-radius: 999px; padding: 14px 44px; font-size: 1.05rem; box-shadow: 0 5px 0 var(--ink);
+    transition: transform .08s, box-shadow .08s; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+  .btn:disabled { background: #9aa0ad; cursor: default; }
+  .btn.sm { padding: 8px 18px; font-size: .9rem; box-shadow: 0 3px 0 var(--ink); }
+  .btn.alt { background: #fff; color: var(--ink); }
+  .btn.green { background: #1f9d55; }
+  .btn.red { background: #d43b3b; }
+  .center { text-align: center; }
+
+  /* ---------- 錯誤橫幅 ---------- */
+  .error { background: #fff0f0; border: 2px solid #d43b3b; color: #a42626; border-radius: 16px; padding: 12px 16px;
+    font-weight: 700; font-size: .92rem; margin-bottom: 18px; }
+
+  /* ---------- 結果 ---------- */
+  .top3 { background: var(--navy); color: #fff; border: 2px solid var(--ink); border-radius: 22px; padding: 20px; margin: 18px 0 20px;
+    box-shadow: 0 5px 0 var(--ink); }
+  .top3 small { display: block; opacity: .8; font-size: .75rem; letter-spacing: .1em; font-weight: 700; margin-bottom: 6px; }
+  .top3 strong { font-size: clamp(1.3rem, 5vw, 1.9rem); font-weight: 900; line-height: 1.4; }
+  .scores { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; text-align: left; }
+  @media (min-width: 640px) { .scores { grid-template-columns: repeat(4, 1fr); } }
+  .score { border: 2px solid #e3e6ee; border-radius: 16px; padding: 10px 12px; background: #fafbfd; }
+  .score .n { font-size: .85rem; font-weight: 700; color: var(--muted); }
+  .score .v { font-size: 1.7rem; font-weight: 900; line-height: 1.2; }
+  .score.top { background: #fff4ee; border-color: var(--orange); }
+  .score.top .n, .score.top .v { color: var(--orange); }
+  .prefs { display: grid; grid-template-columns: 1fr; gap: 12px; text-align: left; }
+  @media (min-width: 640px) { .prefs { grid-template-columns: repeat(3, 1fr); } }
+  .prefs label { display: block; font-size: .8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+  .chosen { margin-top: 16px; background: #fff4ee; border: 2px solid var(--orange); color: var(--orange); border-radius: 14px; padding: 12px 14px; font-weight: 900; }
+  .credit { font-size: .75rem; color: #8a90a0; max-width: 28rem; margin: 18px auto 0; }
+
+  /* ---------- 後台 ---------- */
+  .tablewrap { overflow-x: auto; border: 2px solid var(--line); border-radius: 14px; }
+  table { border-collapse: collapse; width: 100%; min-width: 1500px; font-size: .78rem; text-align: left; }
+  th { background: #eef3ff; color: var(--navy); white-space: nowrap; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); vertical-align: top; }
+  td small { display: block; color: #9aa0ad; font-size: .68rem; }
+  td.num { text-align: center; font-family: ui-monospace, monospace; }
+  .row-actions { display: flex; align-items: center; gap: 10px; }
+  .empty { padding: 40px 0; text-align: center; color: #9aa0ad; }
+
+  /* ---------- 刪除確認 ---------- */
+  .modal { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal .box { background: #fff; border: 2px solid var(--ink); border-radius: 24px; padding: 24px; max-width: 360px; width: 100%; text-align: center; }
+  .modal .box h3 { margin: 0 0 10px; font-weight: 900; font-size: 1.2rem; }
+  .modal .row { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
+
+  /* ---------- 頁尾 ---------- */
+  footer { border-top: 2px solid var(--ink); background: #fff; padding: 22px 0 34px; }
+  .orgs { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 28px; align-items: center; }
+  .org { display: flex; gap: 10px; align-items: center; font-size: .85rem; font-weight: 700; line-height: 1.3; }
+  .org i { width: 34px; height: 34px; border-radius: 50%; display: inline-block; }
+  .org small { display: block; font-weight: 400; color: var(--muted); font-size: .72rem; }
+  #organizer-extra-logo { height: 34px; width: auto; max-width: 190px; object-fit: contain; }
+
+  .lvl { display:inline-block; font-size:.7rem; font-weight:900; padding:1px 8px; border-radius:99px; margin-left:6px; vertical-align:middle; background:#eceef4; color:var(--muted); }
+  .score.top .lvl { background: var(--orange); color:#fff; }
+  .intro { text-align:left; display:grid; gap:12px; margin-top:18px; }
+  .intro .it { border:2px solid #e3e6ee; border-left:6px solid var(--orange); border-radius:16px; padding:12px 14px; background:#fff; }
+  .intro .it h4 { margin:0 0 4px; font-weight:900; }
+  .intro .it p { margin:0 0 4px; font-size:.9rem; }
+  .intro .it small { color:var(--muted); font-size:.8rem; display:block; }
+  details.more { text-align:left; margin-top:14px; }
+  details.more summary { cursor:pointer; font-weight:900; color:var(--navy); padding:6px 0; }
+  .bal { background:#eef7f9; border:2px solid var(--teal); color:#14586a; border-radius:16px; padding:14px; font-weight:700; margin:18px 0 20px; text-align:left; }
+  .bandchk { display:flex; gap:10px; align-items:center; margin:10px 0 14px; font-size:.92rem; }
+  .saved { color:#1f9d55; font-weight:900; margin-top:12px; }
+  .spin { width: 40px; height: 40px; border-radius: 50%; border: 4px solid #dfe3ef; border-top-color: var(--orange); animation: sp 1s linear infinite; margin: 0 auto 12px; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .fade { animation: fadeIn .4s ease-out both; }
+  @media (prefers-reduced-motion: reduce) { .fade, .spin { animation: none; } }
+  @media print { .topbar, footer, .btn { display: none !important; } body { background: #fff; } }
+</style>
+<script type="module">
+  // ===== 後台密碼雜湊：請用 set-password.html 產生後貼在這裡 =====
+  // 沒有設定時任何人都無法登入。
+  const PASSWORD_HASH = '';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAgTM5iP9AGtKhwlHgrRhhZn0XfHnwLMk0",
+    authDomain: "multi-35958.firebaseapp.com",
+    projectId: "multi-35958",
+    storageBucket: "multi-35958.firebasestorage.app",
+    messagingSenderId: "361918676207",
+    appId: "1:361918676207:web:26509a677e5c8cf0b32f1a",
+    measurementId: "G-P1YKCL1Y3D"
+  };
+  const appId = 'multi-intelligences-survey-v1';
+  let initializeApp, getAuth, signInAnonymously, getFirestore, collection, onSnapshot, doc, deleteDoc, getDocs;
+  let db, user = null, unsub = null, DATA = [], FILTER = '';
+
+  const main = document.getElementById('main-content');
+  const errorBanner = document.getElementById('error-banner');
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const showError = m => { errorBanner.textContent = m; errorBanner.classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const hideError = () => errorBanner.classList.add('hidden');
+  // --- 48 題 ---
+  const QUESTIONS = [
+    "我能適時地在說話或寫作時融入多元不同的管道得來的資訊。",
+    "我能經由文字敘述或口語清楚地表達自己的感受或想法。",
+    "我能了解別人的談話內容，並掌握其言談的重點。",
+    "我經常參加演講、辯論、讀書會或文藝營等運用語言文字的活動。",
+    "我積極參與課堂討論。",
+    "我擅長撰寫報告或小論文。",
+    "我能有效地運用數字或推理的能力於日常生活中。",
+    "我能依據數據資料做出合理的解釋。",
+    "我能運用歸納、演繹等邏輯規則，找出事物間的關係並分類。",
+    "我擅長玩邏輯推理相關的遊戲。",
+    "我能運用邏輯推理和分析思考的方式來解決問題。",
+    "我擅長處理數學與邏輯知識相關的工作或專題報告。",
+    "我對於大自然的變化有敏銳的感覺。",
+    "我積極參加賞鳥、園藝、自然步道、登山或露營等活動。",
+    "我經常查閱或觀看以自然景象或動植物為主題的節目、書籍與資料等。",
+    "我擅長觀察動物、植物或礦物特徵，並辨識其類別。",
+    "我關注並認知自然界能量系統的變化及轉換，如：電能、風能、熱能、機械能、太陽能等。",
+    "我能分辨不同型態的山岳及雲朵。",
+    "我擅長配合音樂節奏準確打拍子。",
+    "我能分辨不同樂器音色，並聽出曲調高低、節奏快慢及旋律是否正確。",
+    "我能輕易的將所聽到的曲子哼唱或演奏出來。",
+    "我擅長某種樂器，並可迅速學會其他樂器。",
+    "我投入音樂相關活動（如聽音樂、唱歌、演奏等）。",
+    "我有嘗試音樂創作的經驗。",
+    "我擅長球類、健身、跑步等運動。",
+    "我會運用肢體動作與面部表情來模仿別人。",
+    "我會用手勢或肢體動作來表達意思或情緒。",
+    "我經常從事運用到身體的活動，例如演戲、啦啦隊或跳舞。",
+    "我擅長手做的任務，例如撲克牌魔術、打繩結、作模型或寫毛筆字等。",
+    "我參與公開的肢體表演（例如跳舞、演戲或變魔術等）或運動競賽。",
+    "我擅長利用圖像來表達自己的想法。",
+    "我對色彩與形狀的感覺敏銳，能辨識面孔、景象或物體間的細微差異。",
+    "我有良好的空間方向感，能找出正確的路徑。",
+    "我擅長立體空間遊戲，如樂高、走迷宮、魔術方塊等。",
+    "我擅長美化環境空間。",
+    "我有嘗試空間規劃或景觀設計等經驗。",
+    "我能覺察並有效管理自己的情緒。",
+    "我能認識自我特質、長處與短處。",
+    "我能敏銳認知自己的想法並加以反思。",
+    "我能在難過或失望時找到方法脫離負面情緒。",
+    "我常思考生命的意義。",
+    "我可以接受別人的批評，並自我反省。",
+    "我能敏銳察覺他人的意向及欲望。",
+    "我能帶動或影響人際間的氣氛。",
+    "我能敏銳認知他人的長處與短處。",
+    "我能擔任領導者協助大家完成任務。",
+    "在人際關係中我能有效溝通。",
+    "我能理解他人的想法與感受，並適時換位思考。"
+  ];
+
+  const CATEGORIES = [
+    { name: '語文', indices: [0, 1, 2, 3, 4, 5] },
+    { name: '邏輯數學', indices: [6, 7, 8, 9, 10, 11] },
+    { name: '自然觀察', indices: [12, 13, 14, 15, 16, 17] },
+    { name: '音樂', indices: [18, 19, 20, 21, 22, 23] },
+    { name: '肢體動覺', indices: [24, 25, 26, 27, 28, 29] },
+    { name: '空間', indices: [30, 31, 32, 33, 34, 35] },
+    { name: '內省', indices: [36, 37, 38, 39, 40, 41] },
+    { name: '人際', indices: [42, 43, 44, 45, 46, 47] }
+  ];
+
+
+  // --- 密碼驗證（PBKDF2，程式碼裡只有雜湊，看不到密碼） ---
+  const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  async function checkPassword(pw) {
+    const parts = PASSWORD_HASH.split('$');
+    if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false;
+    const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: Number(parts[1]) }, key, 256);
+    return b64(bits) === parts[3];
+  }
+
+  async function connect() {
+    if (db) return;
+    const [appSdk, authSdk, fsSdk] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js")
+    ]);
+    ({ initializeApp } = appSdk); ({ getAuth, signInAnonymously } = authSdk);
+    ({ getFirestore, collection, onSnapshot, doc, deleteDoc, getDocs } = fsSdk);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    db = getFirestore(app);
+    const cred = await signInAnonymously(auth);
+    user = cred.user;
+  }
+
+  function renderLogin() {
+    main.innerHTML = `
+      <div class="card fade center" style="max-width:380px;margin:40px auto">
+        <h2 style="border:0">主辦人後台</h2>
+        ${PASSWORD_HASH ? '' : '<p style="color:#d43b3b;font-weight:700">尚未設定後台密碼，請先用 set-password.html 產生雜湊並貼到程式裡。</p>'}
+        <input id="admin-password" type="password" placeholder="輸入管理密碼" autocomplete="current-password" style="margin-bottom:14px">
+        <button id="login-btn" class="btn sm" style="width:100%">登入</button>
+      </div>`;
+    const pw = document.getElementById('admin-password');
+    const login = async () => {
+      hideError();
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true; btn.textContent = '驗證中...';
+      try {
+        if (!(await checkPassword(pw.value))) { showError('密碼錯誤'); return; }
+        await connect();
+        renderDashboard();
+      } catch (err) { showError('連線失敗：' + (err.message || err)); }
+      finally { btn.disabled = false; btn.textContent = '登入'; }
+    };
+    document.getElementById('login-btn').onclick = login;
+    pw.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  }
+
+  // --- 刪除確認 ---
+  function showDeleteConfirm(id) {
+    const old = document.getElementById('delete-confirm-modal'); if (old) old.remove();
+    const m = document.createElement('div'); m.id = 'delete-confirm-modal'; m.className = 'modal';
+    m.innerHTML = `<div class="box"><h3>確認刪除</h3><p>確定要刪除這筆紀錄嗎？<br><b style="color:#d43b3b">此操作無法恢復。</b></p>
+      <div class="row"><button id="cancel-delete-btn" class="btn sm alt">取消</button><button id="confirm-delete-btn" class="btn sm red">確定刪除</button></div></div>`;
+    document.body.appendChild(m);
+    document.getElementById('cancel-delete-btn').onclick = () => m.remove();
+    document.getElementById('confirm-delete-btn').onclick = async () => {
+      m.remove();
+      try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'submissions', id)); }
+      catch (err) { showError('刪除失敗：' + (err.message || err)); }
+    };
+  }
+
+  const prefOf = d => (d.preferences && d.preferences.length === 3) ? d.preferences : null;
+
+  function renderDashboard() {
+    main.innerHTML = `
+      <div class="card fade">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+          <h2 style="border:0;margin:0;color:var(--navy)">答題紀錄</h2>
+          <div class="row-actions">
+            <button id="export-btn" class="btn sm green">匯出 Excel</button>
+            <button id="logout-btn" class="ghost">登出</button>
+          </div>
+        </div>
+        <div id="stats"></div>
+        <input id="search" type="text" placeholder="搜尋姓名、團契、小組、聯絡方式…" style="margin:14px 0">
+        <div id="list-container" style="min-height:160px">正在連線至資料庫...</div>
+      </div>`;
+    document.getElementById('logout-btn').onclick = () => { if (unsub) unsub(); unsub = null; DATA = []; renderLogin(); };
+    document.getElementById('export-btn').onclick = exportExcel;
+    document.getElementById('search').oninput = e => { FILTER = e.target.value.trim().toLowerCase(); drawList(); };
+    if (unsub) unsub();
+    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'submissions');
+    unsub = onSnapshot(colRef, snap => {
+      DATA = [];
+      snap.forEach(d => DATA.push({ id: d.id, ...d.data() }));
+      DATA.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      drawStats(); drawList();
+    }, () => {
+      document.getElementById('list-container').innerHTML = `<p class="empty" style="color:#d43b3b">讀取錯誤，請檢查 Firebase 規則。</p>`;
+    });
+  }
+
+  function drawStats() {
+    const total = DATA.length;
+    const withPref = DATA.filter(prefOf).length;
+    const contactCount = {};
+    DATA.forEach(d => { const k = (d.contact || '').trim().toLowerCase(); if (k) contactCount[k] = (contactCount[k] || 0) + 1; });
+    const dups = Object.values(contactCount).filter(n => n > 1).length;
+    const rows = CATEGORIES.map(c => {
+      const n = [0, 1, 2].map(i => DATA.filter(d => prefOf(d) && prefOf(d)[i] === c.name).length);
+      return `<tr><td><b>${c.name}</b></td><td class="num">${n[0]}</td><td class="num">${n[1]}</td><td class="num">${n[2]}</td></tr>`;
+    }).join('');
+    document.getElementById('stats').innerHTML = `
+      <div class="scores" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">
+        <div class="score"><div class="n">填寫人數</div><div class="v">${total}</div></div>
+        <div class="score"><div class="n">已選志願</div><div class="v">${withPref}</div></div>
+        <div class="score"><div class="n">尚未選志願</div><div class="v">${total - withPref}</div></div>
+        <div class="score ${dups ? 'top' : ''}"><div class="n">聯絡方式重複</div><div class="v">${dups}</div></div>
+      </div>
+      <details class="more"><summary>各組志願人數</summary>
+        <div class="tablewrap"><table style="min-width:0"><thead><tr><th>組別</th><th>第一志願</th><th>第二志願</th><th>第三志願</th></tr></thead><tbody>${rows}</tbody></table></div>
+      </details>`;
+  }
+
+  function drawList() {
+    const c = document.getElementById('list-container');
+    if (!c) return;
+    const contactCount = {};
+    DATA.forEach(d => { const k = (d.contact || '').trim().toLowerCase(); if (k) contactCount[k] = (contactCount[k] || 0) + 1; });
+    const list = DATA.filter(d => !FILTER || [d.name, d.fellowship, d.group, d.contact, d.schoolTitle, d['輔導/誰邀請您來到聚會'], d.mentor]
+      .some(v => String(v || '').toLowerCase().includes(FILTER)));
+    if (!list.length) { c.innerHTML = "<p class='empty'>沒有符合的資料</p>"; return; }
+    c.innerHTML = `
+      <div class="tablewrap"><table>
+        <thead><tr>
+          <th>操作</th><th>姓名</th><th>團契 / 小組</th><th>輔導／誰邀請您來到聚會</th><th>性別</th>
+          <th>學校系級／職稱</th><th>手機／電子信箱</th><th>活動資訊來源</th><th>信仰</th><th>活動期待</th>
+          <th>希望志願 (1/2/3)</th>${CATEGORIES.map(x => `<th>${x.name}</th>`).join('')}
+        </tr></thead>
+        <tbody>${list.map(d => {
+          const k = (d.contact || '').trim().toLowerCase();
+          const dup = k && contactCount[k] > 1;
+          const p = prefOf(d);
+          return `<tr${dup ? ' style="background:#fff8d6"' : ''}>
+            <td><button data-id="${esc(d.id)}" class="ghost delete-btn" style="color:#d43b3b;border-color:#d43b3b">刪除</button></td>
+            <td><b>${esc(d.name) || '-'}</b><small>${esc(d.timestamp)}</small></td>
+            <td>${esc(d.fellowship) || '-'}<small>${esc(d.group) || '-'}</small></td>
+            <td>${esc(d['輔導/誰邀請您來到聚會'] || d.mentor) || '-'}</td>
+            <td>${esc(d.sex) || '-'}</td><td>${esc(d.schoolTitle) || '-'}</td>
+            <td>${esc(d.contact) || '-'}${dup ? '<small style="color:#a42626">⚠ 聯絡方式重複</small>' : ''}</td>
+            <td>${esc(d.source) || '-'}</td><td>${esc(d.faith) || '-'}</td>
+            <td>${esc(Array.isArray(d.hopes) ? d.hopes.join('、') : d.hopes) || '-'}</td>
+            <td style="white-space:nowrap">${p ? `1. ${esc(p[0])}<br>2. ${esc(p[1])}<br>3. ${esc(p[2])}` : '-'}</td>
+            ${CATEGORIES.map(x => `<td class="num">${d.scores && d.scores[x.name] !== undefined ? d.scores[x.name] : '-'}</td>`).join('')}
+          </tr>`; }).join('')}</tbody>
+      </table></div>`;
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('.delete-btn'); if (!b) return;
+    e.preventDefault(); showDeleteConfirm(b.dataset.id);
+  });
+
+  // 匯出欄位與舊版相同；排序改用 createdAt（舊版用字串排序，不同手機格式會排亂）
+  async function exportExcel() {
+    const btn = document.getElementById('export-btn');
+    btn.disabled = true; btn.textContent = '準備匯出...';
+    try {
+      const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'submissions'));
+      const rows = [];
+      snap.forEach(s => {
+        const d = s.data();
+        const row = {
+          '填寫時間': d.timestamp || '', '姓名': d.name || '', '性別': d.sex || '',
+          '團契': d.fellowship || '', '小組': d.group || '',
+          '輔導/誰邀請您來到聚會': d['輔導/誰邀請您來到聚會'] || d.mentor || '',
+          '學校系級/職稱': d.schoolTitle || '', '手機/電子信箱': d.contact || '',
+          '從哪裡得知活動資訊': d.source || '', '信仰': d.faith || '',
+          '希望透過本活動': Array.isArray(d.hopes) ? d.hopes.join('、') : (d.hopes || ''),
+          '第一志願': (d.preferences || [])[0] || '', '第二志願': (d.preferences || [])[1] || '', '第三志願': (d.preferences || [])[2] || ''
+        };
+        CATEGORIES.forEach(c => row[c.name] = d.scores && d.scores[c.name] !== undefined ? d.scores[c.name] : '');
+        rows.push({ t: d.createdAt || 0, row });
+      });
+      rows.sort((a, b) => a.t - b.t);
+      const out = rows.map(r => r.row);
+      try {
+        if (!window.XLSX) await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+          s.onload = res; s.onerror = () => rej(new Error('Excel 元件載入失敗')); document.head.appendChild(s);
+        });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(out), '評量結果');
+        XLSX.writeFile(wb, '多元智能評量結果.xlsx');
+      } catch (xerr) {
+        const headers = out.length ? Object.keys(out[0]) : ['填寫時間', '姓名'];
+        const cell = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+        const csv = '\ufeff' + [headers.map(cell).join(','), ...out.map(r => headers.map(h => cell(r[h])).join(','))].join('\r\n');
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        const a = document.createElement('a'); a.href = url; a.download = '多元智能評量結果.csv';
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        showError('Excel 元件無法載入，已改為匯出 Excel 可開啟的 CSV 檔。');
+      }
+    } catch (err) { showError('匯出失敗：' + (err.message || err)); }
+    finally { btn.disabled = false; btn.textContent = '匯出 Excel'; }
+  }
+
+  renderLogin();
+</script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar"><b>多元智能評量　後台</b><a class="ghost" href="../" style="text-decoration:none">前往問卷</a></div>
+    <main>
+      <div id="error-banner" class="error hidden" role="alert"></div>
+      <div id="main-content"></div>
+    </main>
+  </div>
+</body>
+</html>
