@@ -151,9 +151,9 @@
   @media (max-width: 520px) { .logos img { height: 24px; } .logos { gap: 6px 12px; } }
 </style>
 <script type="module">
-  // ===== 後台密碼雜湊：請用 set-password.html 產生後貼在這裡 =====
+  // ===== 後台密碼雜湊（程式碼裡看不到密碼本身）。要換密碼：用 set-password.html 產生新的雜湊貼在這裡 =====
   // 沒有設定時任何人都無法登入。
-  const PASSWORD_HASH = '';
+  const PASSWORD_HASH = 'pbkdf2$200000$rM7OE5J3JhCoeRZlbFyXVw==$nqlkOgvmPjjhKi+R945eZZM486bxH+UxDK31J7GYmzA=';
 
   const firebaseConfig = {
     apiKey: "AIzaSyAgTM5iP9AGtKhwlHgrRhhZn0XfHnwLMk0",
