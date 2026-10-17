@@ -39,7 +39,7 @@
   .star { position: absolute; pointer-events: none; }
   .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
   .pill { display: inline-flex; gap: 10px; align-items: center; background: #fff; border: 2px solid var(--ink);
-    border-radius: 999px; padding: 7px 18px; font-weight: 700; font-size: .95rem; }
+    border-radius: 22px; padding: 7px 18px; font-weight: 700; font-size: .95rem; }
   .pill b { color: var(--orange); font-weight: 900; white-space: nowrap; }
 
   main { padding: 22px 0 60px; }
@@ -118,7 +118,7 @@
   @media (min-width: 640px) { .prefs { grid-template-columns: repeat(3, 1fr); } }
   .prefs label { display: block; font-size: .8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
   .chosen { margin-top: 16px; background: #fff4ee; border: 2px solid var(--orange); color: var(--orange); border-radius: 14px; padding: 12px 14px; font-weight: 900; }
-  .credit { font-size: .75rem; color: #8a90a0; max-width: 28rem; margin: 18px auto 0; }
+  .credit { font-size: .75rem; color: #8a90a0; max-width: 34rem; margin: 18px auto 0; }
 
   /* ---------- 後台 ---------- */
   .tablewrap { overflow-x: auto; border: 2px solid var(--line); border-radius: 14px; }
@@ -571,7 +571,7 @@
 
         <div class="card" style="margin:28px 0 0;text-align:left;box-shadow:none;background:#fafbfd">
           <h3>${saved ? '您選填的前三志願（可修改）' : '請選填希望參加的前三志願組別'}</h3>
-          <p>${saved ? '想換志願的話，重新選擇後按「更新志願」即可。' : '已依你的結果預先帶入，可自行調整；順序即為志願順序，三個志願不可重複。'}</p>
+          <p>${saved ? '想換志願的話，重新選擇後按「更新志願」即可。' : (top.length ? '已依你的結果預先帶入，可自行調整；' : '') + '順序即為志願順序，三個志願不可重複。'}</p>
           <label class="bandchk"><input type="checkbox" id="band-chk"> 我已加入合一堂樂團／管弦樂團（會隱藏音樂智能組別，因您的音樂智能已在開發中囉！）</label>
           <div class="prefs">
             ${[1, 2, 3].map(i => `
@@ -590,7 +590,8 @@
       </div>`;
 
     // 志願選單：預設帶入既有志願，否則帶入前三名
-    const defaults = saved ? result.preferences : (top.length ? top : sorted.map(c => c.name)).slice(0, 3);
+    // 均衡型沒有明顯強項，志願留白讓使用者自己選
+    const defaults = saved ? result.preferences : top.slice(0, 3);
     const buildOptions = () => {
       const noMusic = document.getElementById('band-chk').checked;
       const names = CATEGORIES.map(c => c.name).filter(n => !(noMusic && n === '音樂'));
