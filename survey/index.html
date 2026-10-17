@@ -8,160 +8,146 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
   :root {
-    --navy: #14307a; --orange: #e8541e; --yellow: #f7c935; --teal: #1f8a9e;
-    --ink: #1a1a2e; --muted: #5b6275; --line: #d9dde8; --paper: #fbfbf8;
+    --navy: #14307a; --orange: #e8541e; --yellow: #f7c935;
+    --ink: #1a1a2e; --muted: #5b6275; --line: #d5d9e4; --paper: #fbfbf8;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0; color: var(--ink); line-height: 1.6;
+    margin: 0; color: var(--ink); line-height: 1.65;
     font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
     background-color: var(--paper);
-    background-image: linear-gradient(#e6e9f0 1px, transparent 1px), linear-gradient(90deg, #e6e9f0 1px, transparent 1px);
+    background-image: linear-gradient(#e9ecf2 1px, transparent 1px), linear-gradient(90deg, #e9ecf2 1px, transparent 1px);
     background-size: 28px 28px;
   }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 16px; }
   .hidden { display: none !important; }
+  .center { text-align: center; }
 
-  /* ---------- 頂端列 ---------- */
-  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px;
-    background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 8px 8px 8px 20px; }
-  .topbar b { color: var(--navy); font-weight: 900; letter-spacing: .04em; }
+  /* ---------- 頂端：主辦單位 logo ---------- */
+  .topbar { background: #fff; border-bottom: 1px solid var(--line); }
+  .topbar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; padding-bottom: 10px; }
+  .logos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; }
+  .logos img { height: 34px; width: auto; display: block; }
+  .topbar .aside { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+  .topbar b { color: var(--navy); font-weight: 900; }
   .ghost { font: inherit; font-size: .85rem; font-weight: 700; color: var(--ink); background: #fff; cursor: pointer;
-    border: 2px solid var(--ink); border-radius: 999px; padding: 6px 16px; }
-  .ghost:hover { background: var(--yellow); }
+    border: 1px solid var(--ink); border-radius: 4px; padding: 5px 14px; text-decoration: none; }
+  .ghost:hover { background: var(--ink); color: #fff; }
 
-  /* ---------- Hero ---------- */
-  .hero { position: relative; padding: 34px 0 6px; }
+  /* ---------- 標題區 ---------- */
+  .hero { padding: 40px 0 10px; }
   .hero h1 { margin: 0; font-weight: 900; line-height: 1.1; letter-spacing: .02em; color: var(--navy); font-size: clamp(2.4rem, 10vw, 4.8rem); }
   .hero h1 em { font-style: normal; color: var(--orange); }
-  .hero .sub { margin: 14px 0 0; font-weight: 900; letter-spacing: .08em; font-size: clamp(1.1rem, 4vw, 1.7rem); }
-  .star { position: absolute; pointer-events: none; }
-  .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
-  .pill { display: inline-flex; gap: 10px; align-items: center; background: #fff; border: 2px solid var(--ink);
-    border-radius: 22px; padding: 7px 18px; font-weight: 700; font-size: .95rem; }
-  .pill b { color: var(--orange); font-weight: 900; white-space: nowrap; }
+  .hero .sub { margin: 14px 0 0; font-weight: 900; letter-spacing: .08em; font-size: clamp(1.1rem, 4vw, 1.6rem); }
+  /* 仿海報的「標題｜內容」資訊列 */
+  .info { margin-top: 26px; }
+  .info .row { display: flex; align-items: flex-start; padding: 7px 0; }
+  .info dt { flex: 0 0 4.2em; font-weight: 900; font-size: 1.15rem; color: var(--ink); letter-spacing: .1em; }
+  .info dd { margin: 0; padding-left: 16px; border-left: 2px solid var(--ink); font-size: 1.02rem; }
+  .info { padding: 0; }
 
-  main { padding: 22px 0 60px; }
+  main { padding: 22px 0 56px; }
 
-  /* ---------- 卡片 / 表單 ---------- */
-  .card { background: #fff; border: 2px solid var(--ink); border-radius: 24px; padding: 22px; margin-bottom: 20px;
-    box-shadow: 0 5px 0 rgba(26,26,46,.12); }
-  .card.note { background: #fff; border-color: var(--navy); box-shadow: none; }
-  .card.warn { background: #fff8d6; border-color: var(--yellow); box-shadow: none; }
-  .card h2 { margin: 0 0 14px; font-size: 1.25rem; font-weight: 900; padding-bottom: 8px; border-bottom: 3px solid var(--yellow); }
-  .card h3 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 900; }
+  /* ---------- 區塊 ---------- */
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 22px; margin-bottom: 18px; }
+  .card.note { background: transparent; border: 0; border-left: 3px solid var(--navy); border-radius: 0; padding: 4px 0 4px 16px; }
+  .card.warn { background: #fff8d6; border-color: #ecd77a; }
+  .card h2 { margin: 0 0 16px; font-size: 1.2rem; font-weight: 900; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .card h3 { margin: 0 0 6px; font-size: 1rem; font-weight: 900; }
   .card p { margin: 0 0 6px; font-size: .92rem; color: #333a4d; }
   .grid2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
   @media (min-width: 640px) { .grid2 { grid-template-columns: 1fr 1fr; } .span2 { grid-column: 1 / -1; } }
-  .field label.lab { display: block; font-size: .82rem; font-weight: 700; color: var(--muted); margin-bottom: 5px; }
+  .field label.lab { display: block; font-size: .82rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
   .req { color: var(--orange); }
   input[type=text], input[type=password], select {
     width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: #fff;
-    border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; outline: none; }
-  input[type=text]:focus, input[type=password]:focus, select:focus { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(232,84,30,.18); }
-  .checks { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    border: 1px solid #aeb5c6; border-radius: 4px; padding: 9px 11px; outline: none; }
+  input[type=text]:focus, input[type=password]:focus, select:focus { border-color: var(--navy); box-shadow: 0 0 0 1px var(--navy); }
+  .checks { display: grid; grid-template-columns: 1fr; gap: 6px 18px; }
   @media (min-width: 640px) { .checks { grid-template-columns: 1fr 1fr; } }
-  .checks label { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border: 2px solid var(--line);
-    border-radius: 14px; cursor: pointer; font-size: .95rem; }
-  .checks label:has(input:checked) { border-color: var(--orange); background: #fff4ee; }
+  .checks label { display: flex; gap: 10px; align-items: center; padding: 6px 0; cursor: pointer; font-size: .95rem; }
   input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--orange); }
 
   /* ---------- 題目 ---------- */
-  .progress { position: sticky; top: 0; z-index: 5; margin: -22px -22px 16px; padding: 10px 22px; background: #fff;
-    border-bottom: 2px solid var(--line); border-radius: 22px 22px 0 0; }
-  .progress .bar { height: 10px; background: #eceef4; border-radius: 99px; overflow: hidden; }
-  .progress .bar i { display: block; height: 100%; width: 0; background: var(--orange); border-radius: 99px; transition: width .25s; }
+  .progress { position: sticky; top: 0; z-index: 5; margin: -22px -22px 14px; padding: 10px 22px 8px; background: #fff; border-bottom: 1px solid var(--line); border-radius: 6px 6px 0 0; }
+  .progress .bar { height: 5px; background: #e6e9f0; }
+  .progress .bar i { display: block; height: 100%; width: 0; background: var(--orange); transition: width .25s; }
   .progress small { display: block; margin-top: 4px; font-weight: 700; color: var(--muted); font-size: .78rem; }
-  .q { border: 2px solid #e3e6ee; border-left: 6px solid var(--yellow); border-radius: 16px; padding: 14px 14px 12px; margin-bottom: 12px; background: #fff; transition: border-color .15s; }
-  .q.done { border-left-color: var(--teal); }
-  .q.missing { border-color: #d43b3b; border-left-color: #d43b3b; background: #fff5f5; }
-  .q p { margin: 0 0 10px; font-weight: 500; font-size: 1rem; color: var(--ink); }
+  .q { padding: 16px 0 14px; border-bottom: 1px solid #e6e9f0; }
+  .q:last-child { border-bottom: 0; }
+  .q p { margin: 0 0 10px; font-size: 1rem; color: var(--ink); }
+  .q.missing { background: #fff3f3; box-shadow: -10px 0 0 #fff3f3, 10px 0 0 #fff3f3; }
+  .q.missing p { color: #b42424; }
   .scale { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
   .scale label { position: relative; cursor: pointer; }
   .scale input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-  .scale span { display: block; text-align: center; padding: 10px 0; border: 2px solid var(--line); border-radius: 12px; font-weight: 900; color: var(--muted); }
-  .scale label:hover span { border-color: var(--navy); }
-  .scale input:checked + span { background: var(--orange); border-color: var(--ink); color: #fff; }
-  .scale input:focus-visible + span { box-shadow: 0 0 0 4px rgba(232,84,30,.3); }
+  .scale span { display: block; text-align: center; padding: 9px 0; border: 1px solid #aeb5c6; border-radius: 4px; font-weight: 700; color: var(--muted); background: #fff; }
+  .scale label:hover span { border-color: var(--navy); color: var(--navy); }
+  .scale input:checked + span { background: var(--orange); border-color: var(--orange); color: #fff; }
+  .scale input:focus-visible + span { outline: 2px solid var(--navy); outline-offset: 2px; }
   .ends { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); margin-top: 4px; }
 
   /* ---------- 按鈕 ---------- */
-  .btn { font: inherit; font-weight: 900; letter-spacing: .08em; cursor: pointer; color: #fff; background: var(--orange);
-    border: 2px solid var(--ink); border-radius: 999px; padding: 14px 44px; font-size: 1.05rem; box-shadow: 0 5px 0 var(--ink);
-    transition: transform .08s, box-shadow .08s; }
-  .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+  .btn { font: inherit; font-weight: 900; letter-spacing: .1em; cursor: pointer; color: #fff; background: var(--orange);
+    border: 0; border-radius: 4px; padding: 13px 40px; font-size: 1.02rem; }
+  .btn:hover { background: #cf4616; }
   .btn:disabled { background: #9aa0ad; cursor: default; }
-  .btn.sm { padding: 8px 18px; font-size: .9rem; box-shadow: 0 3px 0 var(--ink); }
-  .btn.alt { background: #fff; color: var(--ink); }
-  .btn.green { background: #1f9d55; }
-  .btn.red { background: #d43b3b; }
-  .center { text-align: center; }
+  .btn.sm { padding: 8px 20px; font-size: .9rem; }
+  .btn.alt { background: #fff; color: var(--ink); border: 1px solid var(--ink); }
+  .btn.alt:hover { background: var(--ink); color: #fff; }
+  .btn.green { background: #1f8a4c; }
+  .btn.green:hover { background: #197340; }
+  .btn.red { background: #c93434; }
 
-  /* ---------- 錯誤橫幅 ---------- */
-  .error { background: #fff0f0; border: 2px solid #d43b3b; color: #a42626; border-radius: 16px; padding: 12px 16px;
-    font-weight: 700; font-size: .92rem; margin-bottom: 18px; }
+  .error { background: #fff0f0; border-left: 4px solid #c93434; color: #a42626; padding: 12px 16px; font-weight: 700; font-size: .92rem; margin-bottom: 18px; }
 
   /* ---------- 結果 ---------- */
-  .top3 { background: var(--navy); color: #fff; border: 2px solid var(--ink); border-radius: 22px; padding: 20px; margin: 18px 0 20px;
-    box-shadow: 0 5px 0 var(--ink); }
-  .top3 small { display: block; opacity: .8; font-size: .75rem; letter-spacing: .1em; font-weight: 700; margin-bottom: 6px; }
-  .top3 strong { font-size: clamp(1.3rem, 5vw, 1.9rem); font-weight: 900; line-height: 1.4; }
-  .scores { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; text-align: left; }
+  .result-name { margin: 0 0 4px; font-size: 1.7rem; font-weight: 900; }
+  .top3 { border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); padding: 16px 0; margin: 18px 0 20px; text-align: left; }
+  .top3 small { display: block; color: var(--muted); font-size: .82rem; font-weight: 700; margin-bottom: 4px; }
+  .top3 strong { font-size: clamp(1.4rem, 5vw, 2rem); font-weight: 900; line-height: 1.4; color: var(--navy); }
+  .scores { display: grid; grid-template-columns: repeat(2, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); text-align: left; }
   @media (min-width: 640px) { .scores { grid-template-columns: repeat(4, 1fr); } }
-  .score { border: 2px solid #e3e6ee; border-radius: 16px; padding: 10px 12px; background: #fafbfd; }
+  .score { padding: 10px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #fff; }
   .score .n { font-size: .85rem; font-weight: 700; color: var(--muted); }
-  .score .v { font-size: 1.7rem; font-weight: 900; line-height: 1.2; }
-  .score.top { background: #fff4ee; border-color: var(--orange); }
+  .score .v { font-size: 1.6rem; font-weight: 900; line-height: 1.25; }
+  .score .v small { font-size: .78rem; font-weight: 400; color: var(--muted); }
+  .score.top { background: #fff4ee; box-shadow: inset 0 3px 0 var(--orange); }
   .score.top .n, .score.top .v { color: var(--orange); }
+  .bal { border-left: 3px solid var(--navy); padding: 4px 0 4px 14px; margin: 18px 0 20px; text-align: left; font-weight: 700; color: var(--ink); }
   .prefs { display: grid; grid-template-columns: 1fr; gap: 12px; text-align: left; }
   @media (min-width: 640px) { .prefs { grid-template-columns: repeat(3, 1fr); } }
   .prefs label { display: block; font-size: .8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
-  .chosen { margin-top: 16px; background: #fff4ee; border: 2px solid var(--orange); color: var(--orange); border-radius: 14px; padding: 12px 14px; font-weight: 900; }
-  .credit { font-size: .75rem; color: #8a90a0; max-width: 34rem; margin: 18px auto 0; }
+  .bandchk { display: flex; gap: 10px; align-items: center; margin: 10px 0 14px; font-size: .92rem; }
+  .saved { color: #1f8a4c; font-weight: 900; margin-top: 12px; }
+  .credit { font-size: .76rem; color: #8a90a0; max-width: 36rem; margin: 16px auto 0; }
 
   /* ---------- 後台 ---------- */
-  .tablewrap { overflow-x: auto; border: 2px solid var(--line); border-radius: 14px; }
-  table { border-collapse: collapse; width: 100%; min-width: 1500px; font-size: .78rem; text-align: left; }
-  th { background: #eef3ff; color: var(--navy); white-space: nowrap; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
+  table { border-collapse: collapse; width: 100%; min-width: 1500px; font-size: .78rem; text-align: left; background: #fff; }
+  th { background: #eef1f8; color: var(--navy); white-space: nowrap; }
   th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); vertical-align: top; }
   td small { display: block; color: #9aa0ad; font-size: .68rem; }
   td.num { text-align: center; font-family: ui-monospace, monospace; }
   .row-actions { display: flex; align-items: center; gap: 10px; }
   .empty { padding: 40px 0; text-align: center; color: #9aa0ad; }
+  details.more { text-align: left; margin-top: 14px; }
+  details.more summary { cursor: pointer; font-weight: 900; color: var(--navy); padding: 6px 0; }
 
-  /* ---------- 刪除確認 ---------- */
   .modal { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 16px; }
-  .modal .box { background: #fff; border: 2px solid var(--ink); border-radius: 24px; padding: 24px; max-width: 360px; width: 100%; text-align: center; }
-  .modal .box h3 { margin: 0 0 10px; font-weight: 900; font-size: 1.2rem; }
+  .modal .box { background: #fff; border-radius: 6px; padding: 24px; max-width: 360px; width: 100%; text-align: center; }
+  .modal .box h3 { margin: 0 0 10px; font-weight: 900; font-size: 1.15rem; }
   .modal .row { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
 
-  /* ---------- 頁尾 ---------- */
-  footer { border-top: 2px solid var(--ink); background: #fff; padding: 22px 0 34px; }
-  .orgs { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 28px; align-items: center; }
-  .org { display: flex; gap: 10px; align-items: center; font-size: .85rem; font-weight: 700; line-height: 1.3; }
-  .org i { width: 34px; height: 34px; border-radius: 50%; display: inline-block; }
-  .org small { display: block; font-weight: 400; color: var(--muted); font-size: .72rem; }
-  #organizer-extra-logo { height: 34px; width: auto; max-width: 190px; object-fit: contain; }
+  footer { border-top: 1px solid var(--line); background: #fff; padding: 16px 0 26px; font-size: .78rem; color: var(--muted); text-align: center; }
 
-  .lvl { display:inline-block; font-size:.7rem; font-weight:900; padding:1px 8px; border-radius:99px; margin-left:6px; vertical-align:middle; background:#eceef4; color:var(--muted); }
-  .score.top .lvl { background: var(--orange); color:#fff; }
-  .intro { text-align:left; display:grid; gap:12px; margin-top:18px; }
-  .intro .it { border:2px solid #e3e6ee; border-left:6px solid var(--orange); border-radius:16px; padding:12px 14px; background:#fff; }
-  .intro .it h4 { margin:0 0 4px; font-weight:900; }
-  .intro .it p { margin:0 0 4px; font-size:.9rem; }
-  .intro .it small { color:var(--muted); font-size:.8rem; display:block; }
-  details.more { text-align:left; margin-top:14px; }
-  details.more summary { cursor:pointer; font-weight:900; color:var(--navy); padding:6px 0; }
-  .bal { background:#eef7f9; border:2px solid var(--teal); color:#14586a; border-radius:16px; padding:14px; font-weight:700; margin:18px 0 20px; text-align:left; }
-  .bandchk { display:flex; gap:10px; align-items:center; margin:10px 0 14px; font-size:.92rem; }
-  .saved { color:#1f9d55; font-weight:900; margin-top:12px; }
-  .spin { width: 40px; height: 40px; border-radius: 50%; border: 4px solid #dfe3ef; border-top-color: var(--orange); animation: sp 1s linear infinite; margin: 0 auto 12px; }
+  .spin { width: 36px; height: 36px; border-radius: 50%; border: 3px solid #dfe3ef; border-top-color: var(--orange); animation: sp 1s linear infinite; margin: 0 auto 12px; }
   @keyframes sp { to { transform: rotate(360deg); } }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  .fade { animation: fadeIn .4s ease-out both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .fade { animation: fadeIn .35s ease-out both; }
   @media (prefers-reduced-motion: reduce) { .fade, .spin { animation: none; } }
-  @media print { .topbar, footer, .btn { display: none !important; } body { background: #fff; } }
+  @media (max-width: 520px) { .logos img { height: 24px; } .logos { gap: 6px 12px; } }
 </style>
 
 <script type="module">
@@ -296,19 +282,7 @@
     { name: '人際', indices: [42, 43, 44, 45, 46, 47] }
   ];
 
-  // --- 各項智能說明（結果頁使用） ---
-  const INTEL = {
-    '語文': { d: '善於用語言文字理解與表達，能說服、溝通，也愛閱讀與寫作。', c: '作家、編輯、記者、教師、主持人、律師、傳道人' },
-    '邏輯數學': { d: '善於推理、分析與處理數字，喜歡找出規律、解決問題。', c: '工程師、程式設計、會計財務、研究員、數據分析、醫師' },
-    '自然觀察': { d: '對自然與生物的細微變化敏銳，善於觀察、辨識與分類。', c: '生態與環境、農業、獸醫、地質氣象、食品科學、醫療檢驗' },
-    '音樂': { d: '對節奏、旋律與音色敏感，容易從聲音中感受與創作。', c: '演奏與創作、音樂教學、音樂治療、聲音設計、敬拜帶領' },
-    '肢體動覺': { d: '善用身體與雙手學習、表達與完成任務，動手做最有感。', c: '運動員與教練、舞蹈與戲劇、手作工藝、物理治療、技術操作' },
-    '空間': { d: '善於用圖像與空間思考，對色彩、形狀與方位感很敏銳。', c: '設計師、建築與室內、美術、攝影影像、動畫、導覽與規劃' },
-    '內省': { d: '了解自己的情緒、長處與限制，善於反思，也能自我管理。', c: '諮商輔導、研究與寫作、創業者、神學與哲學、生涯規劃' },
-    '人際': { d: '善於理解他人、溝通與帶動氣氛，適合團隊合作與帶領。', c: '教育、社工、人資、業務與行銷、管理者、牧養與關懷' }
-  };
   const MIN_SCORE = 6, MAX_SCORE = 36;
-  function level(score) { return score >= 29 ? '強項' : score >= 20 ? '中等' : '待開發'; }
 
   // 前三名：與第三名同分者一併列入；分數過於平均時不硬排名次
   function rankScores(scores) {
@@ -320,17 +294,10 @@
     return { sorted, top, balanced, tied: top.length > 3 };
   }
 
-  const EVENT_INFO = `
-    <div class="pills">
-      <span class="pill"><b>時間</b> 11/7、11/14、11/21　13:30–15:30</span>
-      <span class="pill"><b>地點</b> 貴格會合一堂 B1</span>
-    </div>`;
-
   function render() {
     if (currentView === 'form') renderForm();
     else if (currentView === 'result') renderResult();
     document.getElementById('hero').classList.toggle('hidden', currentView !== 'form');
-    if (currentView !== 'form') document.getElementById('saved-hint').classList.add('hidden');
   }
 
   // --- 草稿：不小心關掉也不會白填 ---
@@ -418,7 +385,7 @@
         <div class="card">
           <div class="progress" id="progress">
             <div class="bar"><i id="progress-fill"></i></div>
-            <small id="progress-text">已完成 0 / 48 題</small>
+            <small><span id="progress-text">已完成 0 / 48 題</span><span id="saved-hint" class="hidden"> ・草稿已自動儲存</span></small>
           </div>
           <h2>評量題目</h2>
           <p style="margin-bottom:16px">每題請選擇 1（完全不同意）到 6（非常同意）</p>
@@ -532,44 +499,28 @@
     const scores = result.scores;
     const { sorted, top, balanced, tied } = rankScores(scores);
     const saved = (result.preferences || []).length === 3;
-    const topInfo = top.map(n => `
-      <div class="it"><h4>${n}智能　<span class="lvl" style="margin:0">${scores[n]} 分</span></h4>
-        <p>${INTEL[n].d}</p><small>可以往這些方向探索：${INTEL[n].c}</small></div>`).join('');
-    const restInfo = sorted.filter(c => !top.includes(c.name)).map(c => `
-      <div class="it" style="border-left-color:var(--line)"><h4>${c.name}智能　<span class="lvl" style="margin:0">${scores[c.name]} 分</span></h4>
-        <p>${INTEL[c.name].d}</p><small>可以往這些方向探索：${INTEL[c.name].c}</small></div>`).join('');
-
     mainContent.innerHTML = `
       <div class="card fade center">
-        ${EVENT_INFO.replace('class="pills"', 'class="pills" style="justify-content:center;margin:0 0 22px"')}
-        <h2 style="border:0;font-size:1.7rem;margin-bottom:0">${esc(result.name)} 的分析結果</h2>
+        <h2 class="result-name" style="border:0;padding:0">${esc(result.name)} 的分析結果</h2>
         <div id="chart-container" style="max-width:440px;margin:14px auto 6px"></div>
 
         ${balanced ? `
-          <div class="bal">你的八項智能分數很接近，沒有特別突出的單一強項，屬於「均衡型」。
-            可以回想平常最投入、最有成就感的事，選擇你最想嘗試的組別。</div>` : `
+          <div class="bal">各項分數很接近，沒有特別突出的項目。</div>` : `
           <div class="top3">
-            <small>依您的作答，${tied ? '前三名（含同分並列）' : '前三大優勢智能'}是：</small>
-            <strong>${top.join(' 、 ')}</strong>
+            <small>${tied ? '前三名（含同分並列）' : '前三大優勢智能'}</small>
+            <strong>${top.join('、')}</strong>
           </div>`}
 
         <div class="scores">
           ${CATEGORIES.map(c => `
             <div class="score ${top.includes(c.name) ? 'top' : ''}">
-              <div class="n">${c.name}<span class="lvl">${level(scores[c.name])}</span></div>
-              <div class="v">${scores[c.name]}<span style="font-size:.8rem;font-weight:700;color:var(--muted)"> / 36</span></div>
+              <div class="n">${c.name}</div>
+              <div class="v">${scores[c.name]}<small> / 36</small></div>
             </div>`).join('')}
         </div>
-        <p class="credit" style="margin-top:10px">每項 6 題，分數範圍 6–36。強項／中等／待開發僅供參考，不代表能力高低。</p>
+        <p class="credit" style="margin-top:10px">每項 6 題，分數範圍 6–36。</p>
 
-        <div class="intro">${top.length ? `<h3 style="margin:8px 0 0">你的優勢智能</h3>${topInfo}` : ''}</div>
-        <details class="more"><summary>${top.length ? '查看其他智能的說明' : '查看八項智能的說明'}</summary>
-          <div class="intro">${top.length ? restInfo : sorted.map(c => `
-            <div class="it" style="border-left-color:var(--line)"><h4>${c.name}智能　<span class="lvl" style="margin:0">${scores[c.name]} 分</span></h4>
-            <p>${INTEL[c.name].d}</p><small>可以往這些方向探索：${INTEL[c.name].c}</small></div>`).join('')}</div>
-        </details>
-
-        <div class="card" style="margin:28px 0 0;text-align:left;box-shadow:none;background:#fafbfd">
+        <div class="card" style="margin:28px 0 0;text-align:left;background:#fafbfd">
           <h3>${saved ? '您選填的前三志願（可修改）' : '請選填希望參加的前三志願組別'}</h3>
           <p>${saved ? '想換志願的話，重新選擇後按「更新志願」即可。' : (top.length ? '已依你的結果預先帶入，可自行調整；' : '') + '順序即為志願順序，三個志願不可重複。'}</p>
           <label class="bandchk"><input type="checkbox" id="band-chk"> 我已加入合一堂樂團／管弦樂團（會隱藏音樂智能組別，因您的音樂智能已在開發中囉！）</label>
@@ -689,23 +640,26 @@
 </script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <b>多元智能評量</b>
-      <span id="saved-hint" class="hidden" style="font-size:.78rem;color:var(--muted);padding-right:12px">已自動儲存草稿</span>
+  <div class="topbar">
+    <div class="wrap">
+      <div class="logos">
+        <img src="img/logo-thpc.png" alt="基督教台灣貴格會合一堂">
+        <img src="img/logo-yc.png" alt="Youth Connected 青少年發展平台">
+        <img id="organizer-extra-logo" src="https://drive.google.com/thumbnail?id=1FPym9M8zETqpjw8mb_nzlCWuwE-sEzHK&amp;sz=w289" alt="聯合新心服務社"
+             onerror="this.onerror=null;this.src='img/logo-newheart.png'">
+      </div>
     </div>
+  </div>
 
+  <div class="wrap">
     <header class="hero" id="hero">
-      <svg class="star" style="top:20px;right:4%;width:54px" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 0 L58 38 L100 50 L58 62 L50 100 L42 62 L0 50 L42 38Z" fill="#f7c935"/></svg>
-      <svg class="star" style="top:100px;right:0;width:28px" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 0 L58 38 L100 50 L58 62 L50 100 L42 62 L0 50 L42 38Z" fill="#1f8a9e"/></svg>
-      <svg class="star" style="top:14px;left:46%;width:24px" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 0 L58 38 L100 50 L58 62 L50 100 L42 62 L0 50 L42 38Z" fill="#1f8a9e"/></svg>
       <h1>找到我的<em>超能力</em></h1>
       <p class="sub">八大智能探索工作坊</p>
-      <div class="pills">
-        <span class="pill"><b>時間</b> 11/7、11/14、11/21　13:30–15:30</span>
-        <span class="pill"><b>地點</b> 貴格會合一堂 B1</span>
-        <span class="pill"><b>方式</b> 講座、實作</span>
-      </div>
+      <dl class="info">
+        <div class="row"><dt>時間</dt><dd>11/7、11/14、11/21　下午 1:30 – 3:30</dd></div>
+        <div class="row"><dt>地點</dt><dd>貴格會合一堂 B1<br>台北市文山區景中街 36 號</dd></div>
+        <div class="row"><dt>方式</dt><dd>講座、實作</dd></div>
+      </dl>
     </header>
 
     <main>
@@ -715,16 +669,5 @@
       </div>
     </main>
   </div>
-
-  <footer>
-    <div class="wrap orgs">
-      <div class="org"><i style="background:var(--navy)"></i><span>基督教台灣貴格會合一堂<small>Taiwan Harmony Friends Church</small></span></div>
-      <div class="org"><i style="background:var(--yellow)"></i><span>Youth Connected<small>青少年發展平台</small></span></div>
-      <div class="org"><i style="background:var(--orange)"></i><span>聯合新心服務社<small>台大、師大、政大、世新</small></span></div>
-      <!-- 如要放回原本的 logo 圖，把下方 src 換成圖片網址即可；載入失敗會自動隱藏 -->
-      <img id="organizer-extra-logo" class="hidden" alt="其他主辦單位標誌" src=""
-           onerror="this.classList.add('hidden')">
-    </div>
-  </footer>
 </body>
 </html>
