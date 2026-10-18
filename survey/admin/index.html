@@ -126,13 +126,20 @@
 
   /* ---------- 後台 ---------- */
   .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }
-  table { border-collapse: collapse; width: 100%; min-width: 1500px; font-size: .78rem; text-align: left; background: #fff; }
+  table { border-collapse: collapse; width: 100%; min-width: 1800px; font-size: .78rem; text-align: left; background: #fff; }
   th { background: #eef1f8; color: var(--navy); white-space: nowrap; }
   th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); vertical-align: top; }
   td small { display: block; color: #9aa0ad; font-size: .68rem; }
   td.num { text-align: center; font-family: ui-monospace, monospace; }
   .row-actions { display: flex; align-items: center; gap: 10px; }
   .empty { padding: 40px 0; text-align: center; color: #9aa0ad; }
+  .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  .filters label { display: block; font-size: .75rem; font-weight: 700; color: var(--muted); margin-bottom: 2px; }
+  .filters select { padding: 6px 8px; font-size: 14px; }
+  .filter-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; font-size: .85rem; color: var(--muted); }
+  .filter-bar label { display: flex; gap: 6px; align-items: center; cursor: pointer; font-weight: 700; color: var(--ink); }
+  th[data-sort] { cursor: pointer; user-select: none; }
+  th[data-sort]:hover { background: #dfe5f3; }
   details.more { text-align: left; margin-top: 14px; }
   details.more summary { cursor: pointer; font-weight: 900; color: var(--navy); padding: 6px 0; }
 
@@ -165,8 +172,10 @@
     measurementId: "G-P1YKCL1Y3D"
   };
   const appId = 'multi-intelligences-survey-v1';
-  let initializeApp, getAuth, signInAnonymously, getFirestore, collection, onSnapshot, doc, deleteDoc, getDocs;
+  let initializeApp, getAuth, signInAnonymously, getFirestore, collection, onSnapshot, doc, deleteDoc;
   let db, user = null, unsub = null, DATA = [], FILTER = '';
+  // 下拉篩選目前選的值（空字串＝不篩）、只看重複、排序欄位與方向（-1＝新到舊）
+  let SEL = {}, DUP_ONLY = false, SORT = { key: 'time', dir: -1 }, DUP = {};
 
   const main = document.getElementById('main-content');
   const errorBanner = document.getElementById('error-banner');
@@ -256,7 +265,7 @@
       import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js")
     ]);
     ({ initializeApp } = appSdk); ({ getAuth, signInAnonymously } = authSdk);
-    ({ getFirestore, collection, onSnapshot, doc, deleteDoc, getDocs } = fsSdk);
+    ({ getFirestore, collection, onSnapshot, doc, deleteDoc } = fsSdk);
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     db = getFirestore(app);
@@ -304,6 +313,62 @@
   }
 
   const prefOf = d => (d.preferences && d.preferences.length === 3) ? d.preferences : null;
+  const contactKey = d => (d.contact || '').trim().toLowerCase();
+  const isDup = d => { const k = contactKey(d); return !!k && DUP[k] > 1; };
+  const mentorOf = d => d['輔導/誰邀請您來到聚會'] || d.mentor;
+
+  // 下拉篩選；選項從現有資料動態產生（含「其他」自填的值），multi＝欄位是陣列，任一符合即可
+  const FILTERS = [
+    { key: 'fellowship', label: '團契', get: d => d.fellowship },
+    { key: 'pref', label: '志願組別（任一志願）', get: d => prefOf(d) || [], multi: true },
+    { key: 'first', label: '第一志願', get: d => (prefOf(d) || [])[0] },
+    { key: 'prefStatus', label: '志願狀態', get: d => prefOf(d) ? '已選志願' : '尚未選志願' },
+    { key: 'faith', label: '信仰', get: d => d.faith },
+    { key: 'source', label: '活動資訊來源', get: d => d.source },
+    { key: 'sex', label: '性別', get: d => d.sex }
+  ];
+
+  // 表格欄位；有 key 的可點表頭排序
+  const COLS = [
+    { label: '操作' },
+    { label: '填寫時間', key: 'time', get: d => d.createdAt || 0, num: true },
+    { label: '姓名', key: 'name', get: d => d.name },
+    { label: '團契 / 小組', key: 'fellowship', get: d => d.fellowship },
+    { label: '輔導／誰邀請您來到聚會', key: 'mentor', get: mentorOf },
+    { label: '性別', key: 'sex', get: d => d.sex },
+    { label: '學校系級／職稱', key: 'school', get: d => d.schoolTitle },
+    { label: '手機／電子信箱', key: 'contact', get: d => d.contact },
+    { label: '活動資訊來源', key: 'source', get: d => d.source },
+    { label: '信仰', key: 'faith', get: d => d.faith },
+    { label: '活動期待' },
+    { label: '希望志願 (1/2/3)', key: 'pref', get: d => (prefOf(d) || [])[0] },
+    ...CATEGORIES.map(c => ({ label: c.name, key: 'c:' + c.name, get: d => d.scores ? d.scores[c.name] : undefined, num: true }))
+  ];
+
+  function filtered() {
+    const list = DATA.filter(d =>
+      (!FILTER || [d.name, d.fellowship, d.group, d.contact, d.schoolTitle, mentorOf(d)]
+        .some(v => String(v || '').toLowerCase().includes(FILTER))) &&
+      (!DUP_ONLY || isDup(d)) &&
+      FILTERS.every(f => {
+        const want = SEL[f.key]; if (!want) return true;
+        const v = f.get(d);
+        return f.multi ? v.includes(want) : (v || '') === want;
+      }));
+    const col = COLS.find(c => c.key === SORT.key);
+    if (DUP_ONLY && SORT.key === 'time') {
+      // 只看重複時，同一個聯絡方式排在一起，方便比對要刪哪筆
+      list.sort((a, b) => contactKey(a).localeCompare(contactKey(b)) || (b.createdAt || 0) - (a.createdAt || 0));
+    } else if (col) {
+      list.sort((a, b) => {
+        const x = col.get(a), y = col.get(b);
+        const ex = x === undefined || x === null || x === '', ey = y === undefined || y === null || y === '';
+        if (ex || ey) return ex - ey; // 空值不論升降冪都排最後
+        return (col.num ? x - y : String(x).localeCompare(String(y), 'zh-Hant')) * SORT.dir;
+      });
+    }
+    return list;
+  }
 
   function renderDashboard() {
     main.innerHTML = `
@@ -316,19 +381,37 @@
           </div>
         </div>
         <div id="stats"></div>
-        <input id="search" type="text" placeholder="搜尋姓名、團契、小組、聯絡方式…" style="margin:14px 0">
+        <input id="search" type="text" placeholder="搜尋姓名、團契、小組、聯絡方式…" style="margin:14px 0 10px">
+        <div id="filters" class="filters"></div>
+        <div class="filter-bar">
+          <label><input id="dup-only" type="checkbox"> 只看聯絡方式重複的</label>
+          <span><span id="count"></span>　<button id="clear-filters" class="ghost" style="padding:3px 10px">清除篩選</button></span>
+        </div>
         <div id="list-container" style="min-height:160px">正在連線至資料庫...</div>
       </div>`;
-    document.getElementById('logout-btn').onclick = () => { if (unsub) unsub(); unsub = null; DATA = []; renderLogin(); };
+    document.getElementById('logout-btn').onclick = () => {
+      if (unsub) unsub(); unsub = null; DATA = []; FILTER = ''; SEL = {}; DUP_ONLY = false; SORT = { key: 'time', dir: -1 };
+      renderLogin();
+    };
     document.getElementById('export-btn').onclick = exportExcel;
     document.getElementById('search').oninput = e => { FILTER = e.target.value.trim().toLowerCase(); drawList(); };
+    document.getElementById('dup-only').onchange = e => { DUP_ONLY = e.target.checked; drawList(); };
+    document.getElementById('clear-filters').onclick = () => {
+      FILTER = ''; SEL = {}; DUP_ONLY = false;
+      document.getElementById('search').value = ''; document.getElementById('dup-only').checked = false;
+      drawFilters(); drawList();
+    };
+    document.getElementById('filters').onchange = e => {
+      if (e.target.dataset.filter) { SEL[e.target.dataset.filter] = e.target.value; drawList(); }
+    };
     if (unsub) unsub();
     const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'submissions');
     unsub = onSnapshot(colRef, snap => {
       DATA = [];
       snap.forEach(d => DATA.push({ id: d.id, ...d.data() }));
-      DATA.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      drawStats(); drawList();
+      DUP = {};
+      DATA.forEach(d => { const k = contactKey(d); if (k) DUP[k] = (DUP[k] || 0) + 1; });
+      drawStats(); drawFilters(); drawList();
     }, () => {
       document.getElementById('list-container').innerHTML = `<p class="empty" style="color:#d43b3b">讀取錯誤，請檢查 Firebase 規則。</p>`;
     });
@@ -337,9 +420,7 @@
   function drawStats() {
     const total = DATA.length;
     const withPref = DATA.filter(prefOf).length;
-    const contactCount = {};
-    DATA.forEach(d => { const k = (d.contact || '').trim().toLowerCase(); if (k) contactCount[k] = (contactCount[k] || 0) + 1; });
-    const dups = Object.values(contactCount).filter(n => n > 1).length;
+    const dups = Object.values(DUP).filter(n => n > 1).length;
     const rows = CATEGORIES.map(c => {
       const n = [0, 1, 2].map(i => DATA.filter(d => prefOf(d) && prefOf(d)[i] === c.name).length);
       return `<tr><td><b>${c.name}</b></td><td class="num">${n[0]}</td><td class="num">${n[1]}</td><td class="num">${n[2]}</td></tr>`;
@@ -356,32 +437,45 @@
       </details>`;
   }
 
+  // 資料即時更新時重畫選項，但保留目前選的值
+  function drawFilters() {
+    const box = document.getElementById('filters'); if (!box) return;
+    box.innerHTML = FILTERS.map(f => {
+      const count = {};
+      DATA.forEach(d => { const v = f.get(d); (f.multi ? v : [v]).forEach(x => { if (x) count[x] = (count[x] || 0) + 1; }); });
+      const sel = SEL[f.key] || '';
+      if (sel && !count[sel]) count[sel] = 0;
+      const opts = Object.keys(count).sort((a, b) => count[b] - count[a] || a.localeCompare(b, 'zh-Hant'));
+      return `<div><label>${f.label}</label><select data-filter="${f.key}">
+        <option value="">全部</option>
+        ${opts.map(o => `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o)}（${count[o]}）</option>`).join('')}
+      </select></div>`;
+    }).join('');
+  }
+
   function drawList() {
     const c = document.getElementById('list-container');
     if (!c) return;
-    const contactCount = {};
-    DATA.forEach(d => { const k = (d.contact || '').trim().toLowerCase(); if (k) contactCount[k] = (contactCount[k] || 0) + 1; });
-    const list = DATA.filter(d => !FILTER || [d.name, d.fellowship, d.group, d.contact, d.schoolTitle, d['輔導/誰邀請您來到聚會'], d.mentor]
-      .some(v => String(v || '').toLowerCase().includes(FILTER)));
+    const list = filtered();
+    document.getElementById('count').textContent = `顯示 ${list.length} / ${DATA.length} 筆（匯出會匯出目前顯示的資料）`;
     if (!list.length) { c.innerHTML = "<p class='empty'>沒有符合的資料</p>"; return; }
+    const arrow = k => SORT.key === k ? (SORT.dir > 0 ? ' ▲' : ' ▼') : '';
     c.innerHTML = `
       <div class="tablewrap"><table>
-        <thead><tr>
-          <th>操作</th><th>姓名</th><th>團契 / 小組</th><th>輔導／誰邀請您來到聚會</th><th>性別</th>
-          <th>學校系級／職稱</th><th>手機／電子信箱</th><th>活動資訊來源</th><th>信仰</th><th>活動期待</th>
-          <th>希望志願 (1/2/3)</th>${CATEGORIES.map(x => `<th>${x.name}</th>`).join('')}
-        </tr></thead>
+        <thead><tr>${COLS.map(col => col.key
+          ? `<th data-sort="${col.key}" title="點擊排序">${col.label}${arrow(col.key)}</th>`
+          : `<th>${col.label}</th>`).join('')}</tr></thead>
         <tbody>${list.map(d => {
-          const k = (d.contact || '').trim().toLowerCase();
-          const dup = k && contactCount[k] > 1;
+          const dup = isDup(d);
           const p = prefOf(d);
           return `<tr${dup ? ' style="background:#fff8d6"' : ''}>
             <td><button data-id="${esc(d.id)}" class="ghost delete-btn" style="color:#d43b3b;border-color:#d43b3b">刪除</button></td>
-            <td><b>${esc(d.name) || '-'}</b><small>${esc(d.timestamp)}</small></td>
+            <td style="white-space:nowrap">${esc(d.timestamp) || '-'}</td>
+            <td style="white-space:nowrap"><b>${esc(d.name) || '-'}</b></td>
             <td>${esc(d.fellowship) || '-'}<small>${esc(d.group) || '-'}</small></td>
-            <td>${esc(d['輔導/誰邀請您來到聚會'] || d.mentor) || '-'}</td>
+            <td>${esc(mentorOf(d)) || '-'}</td>
             <td>${esc(d.sex) || '-'}</td><td>${esc(d.schoolTitle) || '-'}</td>
-            <td>${esc(d.contact) || '-'}${dup ? '<small style="color:#a42626">⚠ 聯絡方式重複</small>' : ''}</td>
+            <td>${esc(d.contact) || '-'}${dup ? `<small style="color:#a42626">⚠ 聯絡方式重複（共 ${DUP[contactKey(d)]} 筆）</small>` : ''}</td>
             <td>${esc(d.source) || '-'}</td><td>${esc(d.faith) || '-'}</td>
             <td>${esc(Array.isArray(d.hopes) ? d.hopes.join('、') : d.hopes) || '-'}</td>
             <td style="white-space:nowrap">${p ? `1. ${esc(p[0])}<br>2. ${esc(p[1])}<br>3. ${esc(p[2])}` : '-'}</td>
@@ -390,33 +484,39 @@
       </table></div>`;
   }
   document.addEventListener('click', e => {
+    const th = e.target.closest('th[data-sort]');
+    if (th) {
+      const k = th.dataset.sort;
+      const col = COLS.find(c => c.key === k);
+      // 同欄再點一次反轉；換欄時數字（分數、時間）預設大到小，文字預設 A→Z
+      SORT = SORT.key === k ? { key: k, dir: -SORT.dir } : { key: k, dir: col.num ? -1 : 1 };
+      drawList(); return;
+    }
     const b = e.target.closest('.delete-btn'); if (!b) return;
     e.preventDefault(); showDeleteConfirm(b.dataset.id);
   });
 
-  // 匯出欄位與舊版相同；排序改用 createdAt（舊版用字串排序，不同手機格式會排亂）
+  // 匯出欄位與舊版相同；只匯出目前篩選後的資料。沒自訂排序時照舊由舊到新，有點表頭排序就照畫面順序
   async function exportExcel() {
     const btn = document.getElementById('export-btn');
     btn.disabled = true; btn.textContent = '準備匯出...';
     try {
-      const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'submissions'));
-      const rows = [];
-      snap.forEach(s => {
-        const d = s.data();
+      let list = filtered();
+      if (SORT.key === 'time' && SORT.dir === -1 && !DUP_ONLY) list = list.slice().reverse();
+      const out = list.map(d => {
         const row = {
           '填寫時間': d.timestamp || '', '姓名': d.name || '', '性別': d.sex || '',
           '團契': d.fellowship || '', '小組': d.group || '',
-          '輔導/誰邀請您來到聚會': d['輔導/誰邀請您來到聚會'] || d.mentor || '',
+          '輔導/誰邀請您來到聚會': mentorOf(d) || '',
           '學校系級/職稱': d.schoolTitle || '', '手機/電子信箱': d.contact || '',
           '從哪裡得知活動資訊': d.source || '', '信仰': d.faith || '',
           '希望透過本活動': Array.isArray(d.hopes) ? d.hopes.join('、') : (d.hopes || ''),
           '第一志願': (d.preferences || [])[0] || '', '第二志願': (d.preferences || [])[1] || '', '第三志願': (d.preferences || [])[2] || ''
         };
         CATEGORIES.forEach(c => row[c.name] = d.scores && d.scores[c.name] !== undefined ? d.scores[c.name] : '');
-        rows.push({ t: d.createdAt || 0, row });
+        return row;
       });
-      rows.sort((a, b) => a.t - b.t);
-      const out = rows.map(r => r.row);
+      if (!out.length) { showError('目前篩選沒有資料可以匯出'); return; }
       try {
         if (!window.XLSX) await new Promise((res, rej) => {
           const s = document.createElement('script');
